@@ -11,6 +11,7 @@ const TYPES = {
 	".js": "text/javascript",
 	".json": "application/json",
 	".map": "application/json",
+	".ttf": "font/ttf",
 	".wasm": "application/wasm",
 	".webmanifest": "application/manifest+json",
 };

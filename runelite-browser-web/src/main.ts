@@ -16,6 +16,10 @@ const status: EngineStatus = {
 	frameCount: 0,
 	medianMs: 0,
 	sample: null,
+	batchCount: 0,
+	glyphCount: 0,
+	glyphAtlas: false,
+	uiLayer: false,
 	error: null,
 };
 window.__runelite = status;
@@ -42,10 +46,15 @@ function main(): void {
 		if (message.type === "ready") {
 			status.ready = true;
 			status.backend = message.backend;
+			sendUiLayer(renderWorker, shell.canvas);
 		} else if (message.type === "stats") {
 			status.frameCount = message.frameCount;
 			status.medianMs = message.medianMs;
 			status.sample = message.sample;
+			status.batchCount = message.batchCount;
+			status.glyphCount = message.glyphCount;
+			status.glyphAtlas = message.glyphAtlas;
+			status.uiLayer = message.uiLayer;
 			updateHud(shell.hud, status);
 		} else {
 			status.error = message.message;
@@ -146,8 +155,51 @@ function wireResize(canvas: HTMLCanvasElement, renderWorker: Worker, gameWorker:
 		const height = Math.max(1, Math.round(entry.contentRect.height));
 		renderWorker.postMessage({ type: "resize", width, height } satisfies RenderIn);
 		gameWorker.postMessage({ type: "resize", width, height } satisfies GameIn);
+		sendUiLayer(renderWorker, canvas);
 	});
 	observer.observe(canvas);
+}
+
+/**
+ * Renders a synthetic client-style UI layer (frame border, chatbox panel,
+ * minimap ring — centre kept clear so the 3D scene stays visible/verifiable)
+ * and posts its pixels to the render worker for compositing. This stands in for
+ * the real client framebuffer, which will arrive through the same message from
+ * the CheerpJ interop (`BufferProvider.getPixels()`).
+ */
+function sendUiLayer(renderWorker: Worker, canvas: HTMLCanvasElement): void {
+	const width = Math.max(1, canvas.clientWidth || 800);
+	const height = Math.max(1, canvas.clientHeight || 600);
+	const layer = new OffscreenCanvas(width, height);
+	const ctx = layer.getContext("2d", { willReadFrequently: true });
+	if (!ctx) {
+		return;
+	}
+
+	// Frame border.
+	ctx.strokeStyle = "rgba(94, 84, 65, 0.9)";
+	ctx.lineWidth = 4;
+	ctx.strokeRect(2, 2, width - 4, height - 4);
+
+	// Chatbox panel, bottom-left.
+	const boxW = Math.min(320, width - 24);
+	const boxH = 96;
+	ctx.fillStyle = "rgba(20, 18, 14, 0.72)";
+	ctx.fillRect(8, height - boxH - 8, boxW, boxH);
+	ctx.strokeStyle = "rgba(94, 84, 65, 0.9)";
+	ctx.lineWidth = 2;
+	ctx.strokeRect(8, height - boxH - 8, boxW, boxH);
+
+	// Minimap ring, top-right.
+	ctx.beginPath();
+	ctx.arc(width - 56, 56, 40, 0, Math.PI * 2);
+	ctx.strokeStyle = "rgba(94, 84, 65, 0.9)";
+	ctx.lineWidth = 3;
+	ctx.stroke();
+
+	const image = ctx.getImageData(0, 0, width, height);
+	const message: RenderIn = { type: "ui", width, height, pixels: image.data.buffer };
+	renderWorker.postMessage(message, [image.data.buffer]);
 }
 
 async function registerServiceWorker(): Promise<void> {

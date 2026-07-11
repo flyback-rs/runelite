@@ -29,6 +29,13 @@ test("engine boots, renders and animates in a worker", async ({ page }, testInfo
 	expect(status.error).toBeNull();
 	expect(status.frameCount).toBeGreaterThan(before);
 
+	// Stage-4 features: opaque + translucent batches, glyph runs rendered from
+	// the baked RuneScape font atlas, and the composited UI layer.
+	expect(status.batchCount).toBeGreaterThanOrEqual(3);
+	expect(status.glyphCount).toBeGreaterThan(0);
+	expect(status.glyphAtlas).toBe(true);
+	expect(status.uiLayer).toBe(true);
+
 	if (backend === "webgl2") {
 		// WebGL2 supports synchronous readback: verify the scene is drawn
 		// (non-background) and animated (the sampled pixel changes as the cube

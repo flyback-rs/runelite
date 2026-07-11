@@ -9,7 +9,7 @@
  */
 
 export const MAGIC = 0x52534342; // 'RSCB'
-export const VERSION = 1;
+export const VERSION = 2;
 
 export const SECTION_ENTITY_TRANSFORMS = 1;
 export const SECTION_MESH_RANGES = 2;
@@ -22,6 +22,12 @@ export const SECTION_DRAW_BATCHES = 8;
 
 /** Bytes per vertex in {@link SECTION_VERTEX_DATA}. */
 export const VERTEX_STRIDE = 24;
+
+/** Draw-batch flag: blend this batch after all opaque batches. */
+export const BATCH_TRANSLUCENT = 1;
+
+/** One texture tile in the vertex `tex` field's Q12 fixed point. */
+export const UV_ONE = 4096;
 
 export interface CameraUniforms {
 	readonly worldProj: Float32Array; // 16, column-major
@@ -45,6 +51,23 @@ export interface DrawBatch {
 	readonly materialId: number;
 	readonly firstVertex: number;
 	readonly vertexCount: number;
+	/**
+	 * Bit 0 ({@link BATCH_TRANSLUCENT}): draw after all opaque batches, blended,
+	 * without depth writes. Translucent batches arrive back-to-front (the
+	 * producer sorts, as the game client sorts its own translucent geometry).
+	 */
+	readonly flags: number;
+}
+
+export interface GlyphRun {
+	/** Baseline origin in pixels (top-left screen origin). */
+	readonly x: number;
+	readonly y: number;
+	/** Packed RGBA8: `(r << 24) | (g << 16) | (b << 8) | a`. */
+	readonly color: number;
+	/** 0 = small, 1 = regular, 2 = bold. */
+	readonly fontId: number;
+	readonly text: string;
 }
 
 export interface OverlayQuad {
@@ -64,6 +87,7 @@ export interface Frame {
 	readonly vertexCount: number;
 	readonly batches: DrawBatch[];
 	readonly overlays: OverlayQuad[];
+	readonly glyphs: GlyphRun[];
 }
 
 interface RawSection {
@@ -97,12 +121,17 @@ export function parseSections(view: DataView): { version: number; sections: RawS
 export function parseFrame(bytes: Uint8Array, length = bytes.byteLength): Frame {
 	const view = new DataView(bytes.buffer, bytes.byteOffset, length);
 	const { version, sections } = parseSections(view);
+	if (version !== VERSION) {
+		// Both sides ship together; a mismatch means a stale wasm or bundle.
+		throw new Error(`scene command buffer version ${version}, expected ${VERSION}`);
+	}
 
 	let camera: CameraUniforms | null = null;
 	let vertices: Uint8Array | null = null;
 	let vertexCount = 0;
 	const batches: DrawBatch[] = [];
 	const overlays: OverlayQuad[] = [];
+	const glyphs: GlyphRun[] = [];
 
 	for (const section of sections) {
 		switch (section.type) {
@@ -115,11 +144,12 @@ export function parseFrame(bytes: Uint8Array, length = bytes.byteLength): Frame 
 				break;
 			case SECTION_DRAW_BATCHES:
 				for (let i = 0; i < section.elementCount; i++) {
-					const at = section.offset + i * 12;
+					const at = section.offset + i * 16;
 					batches.push({
 						materialId: view.getInt32(at, true),
 						firstVertex: view.getInt32(at + 4, true),
 						vertexCount: view.getInt32(at + 8, true),
+						flags: view.getInt32(at + 12, true),
 					});
 				}
 				break;
@@ -135,12 +165,31 @@ export function parseFrame(bytes: Uint8Array, length = bytes.byteLength): Frame 
 					});
 				}
 				break;
+			case SECTION_GLYPH_RUNS: {
+				let at = section.offset;
+				for (let i = 0; i < section.elementCount; i++) {
+					const charCount = view.getUint16(at + 14, true);
+					let text = "";
+					for (let c = 0; c < charCount; c++) {
+						text += String.fromCharCode(view.getUint8(at + 16 + c));
+					}
+					glyphs.push({
+						x: view.getFloat32(at, true),
+						y: view.getFloat32(at + 4, true),
+						color: view.getUint32(at + 8, true),
+						fontId: view.getUint16(at + 12, true),
+						text,
+					});
+					at += 16 + charCount;
+				}
+				break;
+			}
 			default:
 				break;
 		}
 	}
 
-	return { version, camera, vertices, vertexCount, batches, overlays };
+	return { version, camera, vertices, vertexCount, batches, overlays, glyphs };
 }
 
 function readCamera(view: DataView, offset: number): CameraUniforms {

@@ -6,9 +6,17 @@ runs in an OffscreenCanvas render worker, fed per-frame `SceneCommandBuffer`s ov
 the full three-thread architecture from the design.
 
 Because the real injected game client is unavailable, the engine is driven by a
-deterministic **synthetic scene-replay source** (a spinning, HSL-coloured cube) written
-in Java/WasmGC in `runelite-browser-core` (`SceneReplaySource` + the `GameWorker`
-`@JSExport` API), emitting the *real* vertex/uniform format the injected client will use.
+deterministic **synthetic scene-replay source** written in Java/WasmGC in
+`runelite-browser-core` (`SceneReplaySource` + the `GameWorker` `@JSExport` API),
+emitting the *real* vertex/uniform format the injected client will use: a textured
+floor and spinning cube (texture-array materials via the vertex `tex` field),
+translucent panels (sorted back-to-front by the producer, blended by the renderer),
+screen-space glyph runs, and a HUD overlay quad.
+
+The renderer also composites a **UI pixel layer** over the scene (posted to the render
+worker as a transferable RGBA buffer — the seam the CheerpJ-hosted client's
+`BufferProvider.getPixels()` frames will arrive through) and renders **text** from a
+glyph atlas baked at startup from the three RuneScape TTFs bundled with the client.
 
 ## Architecture
 

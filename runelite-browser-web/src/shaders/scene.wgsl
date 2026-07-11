@@ -1,5 +1,6 @@
 // Scene shader (WebGPU). Mirror of scene.vert.glsl / scene.frag.glsl: unpack the
-// packed abhsl colour, OSRS HSL -> RGB, reversed-Z world/entity projection.
+// packed abhsl colour, OSRS HSL -> RGB, reversed-Z world/entity projection, and
+// texture-array sampling by the per-vertex material id.
 
 struct Camera {
 	worldProj : mat4x4<f32>,
@@ -8,10 +9,14 @@ struct Camera {
 };
 
 @group(0) @binding(0) var<uniform> camera : Camera;
+@group(0) @binding(1) var texSampler : sampler;
+@group(0) @binding(2) var textures : texture_2d_array<f32>;
 
 struct VsOut {
 	@builtin(position) position : vec4<f32>,
 	@location(0) color : vec4<f32>,
+	@location(1) uv : vec2<f32>,
+	@location(2) @interpolate(flat) material : i32,
 };
 
 fn channel(low : f32, high : f32, h : f32) -> f32 {
@@ -39,7 +44,11 @@ fn hslToRgb(hsl : vec3<f32>, brightness : f32) -> vec3<f32> {
 }
 
 @vertex
-fn vs_main(@location(0) aPos : vec3<f32>, @location(1) aAbhsl : u32) -> VsOut {
+fn vs_main(
+	@location(0) aPos : vec3<f32>,
+	@location(1) aAbhsl : u32,
+	@location(2) aTex : vec4<i32>,
+) -> VsOut {
 	let a = f32((aAbhsl >> 24u) & 0xffu) / 255.0;
 	let hsl = vec3<f32>(f32((aAbhsl >> 10u) & 63u), f32((aAbhsl >> 7u) & 7u), f32(aAbhsl & 127u));
 	let rgb = hslToRgb(hsl, camera.brightness);
@@ -47,10 +56,19 @@ fn vs_main(@location(0) aPos : vec3<f32>, @location(1) aAbhsl : u32) -> VsOut {
 	var out : VsOut;
 	out.position = camera.worldProj * world;
 	out.color = vec4<f32>(rgb, 1.0 - a);
+	out.uv = vec2<f32>(f32(aTex.y), f32(aTex.z)) / 4096.0;
+	out.material = aTex.x;
 	return out;
 }
 
 @fragment
 fn fs_main(data : VsOut) -> @location(0) vec4<f32> {
-	return vec4<f32>(data.color.rgb, data.color.a);
+	var color = data.color;
+	if (data.material > 0) {
+		// Layer materialId - 1, modulated by the vertex colour. Sampled at level
+		// 0 explicitly so the non-uniform branch is valid WGSL.
+		let tex = textureSampleLevel(textures, texSampler, data.uv, data.material - 1, 0.0);
+		color = vec4<f32>(tex.rgb * data.color.rgb, data.color.a);
+	}
+	return color;
 }

@@ -26,6 +26,18 @@ for (const file of ["runelite-browser.wasm", "runelite-browser.wasm-runtime.js"]
 // Append an ESM export so the game worker can `import()` it (CSP-safe; no eval).
 appendFileSync(resolve(outdir, "runelite-browser.wasm-runtime.js"), "\nexport default TeaVM;\n");
 
+// The RuneScape fonts bundled with the client; the render worker bakes its
+// glyph atlas from these (see src/text/atlas.ts).
+const fontSrc = resolve(root, "../runelite-client/src/main/resources/net/runelite/client/ui");
+mkdirSync(resolve(outdir, "fonts"), { recursive: true });
+for (const font of ["runescape.ttf", "runescape_bold.ttf", "runescape_small.ttf"]) {
+	const src = resolve(fontSrc, font);
+	if (!existsSync(src)) {
+		throw new Error(`[build] missing font ${src}`);
+	}
+	cpSync(src, resolve(outdir, "fonts", font));
+}
+
 const options = {
 	entryPoints: {
 		main: resolve(root, "src/main.ts"),

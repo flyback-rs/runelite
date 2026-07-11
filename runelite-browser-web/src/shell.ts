@@ -5,6 +5,10 @@ export interface EngineStatus {
 	frameCount: number;
 	medianMs: number;
 	sample: number[] | null;
+	batchCount: number;
+	glyphCount: number;
+	glyphAtlas: boolean;
+	uiLayer: boolean;
 	error: string | null;
 }
 

@@ -1,18 +1,22 @@
 #version 300 es
 // Scene vertex shader (WebGL2), a subset of the RuneLite GPU plugin's vert.glsl:
-// unpack the packed abhsl colour, convert OSRS HSL -> RGB, and apply the
-// column-major reversed-Z world/entity projection.
+// unpack the packed abhsl colour, convert OSRS HSL -> RGB, apply the
+// column-major reversed-Z world/entity projection, and pass the material id and
+// Q12 UVs through for texture-array sampling.
 precision highp float;
 precision highp int;
 
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in uint aAbhsl;
+layout(location = 2) in ivec4 aTex; // materialId (0 = untextured), uQ12, vQ12, 0
 
 uniform mat4 uWorldProj;
 uniform mat4 uEntityProj;
 uniform float uBrightness;
 
 out vec4 vColor;
+out vec2 vUv;
+flat out int vMaterial;
 
 float channel(float low, float high, float h)
 {
@@ -70,4 +74,6 @@ void main()
 	vec4 world = uEntityProj * vec4(aPos, 1.0);
 	gl_Position = uWorldProj * world;
 	vColor = vec4(rgb, 1.0 - a);
+	vUv = vec2(aTex.yz) / 4096.0;
+	vMaterial = aTex.x;
 }

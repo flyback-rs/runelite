@@ -2,6 +2,7 @@ import { type BackendPreference, createBackend } from "../backends/create.ts";
 import type { Backend } from "../backends/types.ts";
 import type { RenderIn, RenderOut } from "../protocol.ts";
 import { type Frame, parseFrame } from "../scene/command-buffer.ts";
+import { buildGlyphAtlas } from "../text/atlas.ts";
 import { Ring, type RingLayout } from "../transport/ring.ts";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
@@ -17,6 +18,8 @@ let frameCount = 0;
 let errorCount = 0;
 let lastStatsAt = 0;
 let lastLoopAt = 0;
+let glyphAtlasReady = false;
+let uiLayerLoaded = false;
 const intervals: number[] = [];
 
 function post(message: RenderOut): void {
@@ -31,6 +34,9 @@ ctx.addEventListener("message", (event: MessageEvent<RenderIn>) => {
 		canvas.width = message.width;
 		canvas.height = message.height;
 		backend.resize(message.width, message.height);
+	} else if (message.type === "ui" && backend) {
+		backend.setUiLayer(message.width, message.height, new Uint8Array(message.pixels));
+		uiLayerLoaded = true;
 	}
 });
 
@@ -47,6 +53,13 @@ async function init(
 		canvas.height = height;
 		ring = Ring.attach(ringLayout);
 		backend = await createBackend(canvas, width, height, preference);
+		// Bake the font atlas from the bundled RuneScape TTFs; text is skipped
+		// (not fatal) when fonts cannot be rasterised in this worker.
+		const atlas = await buildGlyphAtlas(new URL("./fonts/", ctx.location.href).href);
+		if (atlas) {
+			backend.setGlyphAtlas(atlas);
+			glyphAtlasReady = true;
+		}
 		post({ type: "ready", backend: backend.name });
 		loop();
 	} catch (error) {
@@ -94,6 +107,10 @@ function loop(): void {
 			frameCount,
 			medianMs: median(intervals),
 			sample: sample ? [...sample] : null,
+			batchCount: lastFrame?.batches.length ?? 0,
+			glyphCount: lastFrame?.glyphs.reduce((n, run) => n + run.text.length, 0) ?? 0,
+			glyphAtlas: glyphAtlasReady,
+			uiLayer: uiLayerLoaded,
 		});
 	}
 

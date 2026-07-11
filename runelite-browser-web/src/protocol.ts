@@ -15,7 +15,18 @@ export interface RenderResize {
 	readonly width: number;
 	readonly height: number;
 }
-export type RenderIn = RenderInit | RenderResize;
+/**
+ * The client UI pixel layer (RGBA8, row-major from the top), composited over
+ * the 3D scene. The buffer is transferred, not copied. This is the seam the
+ * CheerpJ-hosted client's `BufferProvider.getPixels()` frames arrive through.
+ */
+export interface RenderUi {
+	readonly type: "ui";
+	readonly width: number;
+	readonly height: number;
+	readonly pixels: ArrayBuffer;
+}
+export type RenderIn = RenderInit | RenderResize | RenderUi;
 
 // Render worker -> main thread.
 export interface RenderReady {
@@ -27,6 +38,14 @@ export interface RenderStats {
 	readonly frameCount: number;
 	readonly medianMs: number;
 	readonly sample: number[] | null;
+	/** Draw batches in the last frame. */
+	readonly batchCount: number;
+	/** Glyphs (characters) in the last frame's glyph runs. */
+	readonly glyphCount: number;
+	/** Whether the font atlas baked successfully. */
+	readonly glyphAtlas: boolean;
+	/** Whether a UI layer has been composited. */
+	readonly uiLayer: boolean;
 }
 export interface RenderError {
 	readonly type: "error";

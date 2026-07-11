@@ -62,10 +62,59 @@ public class SceneReplaySourceTest
 
 		Section batches = byType.get(SceneCommandBuffer.SECTION_DRAW_BATCHES);
 		assertNotNull(batches);
-		assertEquals(1, batches.elementCount());
-		assertEquals(12, batches.payload().length);
+		assertEquals(SceneReplaySource.BATCH_COUNT, batches.elementCount());
+		assertEquals(SceneReplaySource.BATCH_COUNT * 16, batches.payload().length);
 
 		assertNotNull(byType.get(SceneCommandBuffer.SECTION_OVERLAY_QUADS));
+
+		Section glyphs = byType.get(SceneCommandBuffer.SECTION_GLYPH_RUNS);
+		assertNotNull(glyphs);
+		assertEquals(2, glyphs.elementCount());
+	}
+
+	@Test
+	public void translucentBatchesFollowOpaqueAndCoverAllVertices()
+	{
+		SceneReplaySource source = new SceneReplaySource(800, 600);
+		SceneCommandBuffer buffer = new SceneCommandBuffer();
+		source.fill(buffer, 17);
+
+		byte[] payload = null;
+		for (Section section : SceneCommandBuffer.parse(buffer.finish()))
+		{
+			if (section.type() == SceneCommandBuffer.SECTION_DRAW_BATCHES)
+			{
+				payload = section.payload();
+			}
+		}
+		assertNotNull(payload);
+
+		int covered = 0;
+		boolean sawTranslucent = false;
+		for (int i = 0; i < payload.length; i += 16)
+		{
+			int vertexCount = readIntLe(payload, i + 8);
+			int flags = readIntLe(payload, i + 12);
+			covered += vertexCount;
+			if ((flags & SceneCommandBuffer.BATCH_TRANSLUCENT) != 0)
+			{
+				sawTranslucent = true;
+			}
+			else
+			{
+				assertTrue("opaque batch after a translucent one", !sawTranslucent);
+			}
+		}
+		assertEquals(SceneReplaySource.VERTEX_COUNT, covered);
+		assertTrue(sawTranslucent);
+	}
+
+	private static int readIntLe(byte[] bytes, int at)
+	{
+		return (bytes[at] & 0xff)
+			| ((bytes[at + 1] & 0xff) << 8)
+			| ((bytes[at + 2] & 0xff) << 16)
+			| ((bytes[at + 3] & 0xff) << 24);
 	}
 
 	@Test

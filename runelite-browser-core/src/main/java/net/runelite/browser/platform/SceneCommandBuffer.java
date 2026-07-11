@@ -48,13 +48,19 @@ public final class SceneCommandBuffer
 {
 	/** Magic number 'RSCB' identifying the buffer. */
 	public static final int MAGIC = 0x52534342;
-	/** Layout version. */
-	public static final short VERSION = 1;
+	/** Layout version. Version 2: draw batches carry flags; glyph runs defined. */
+	public static final short VERSION = 2;
 
 	public static final int SECTION_ENTITY_TRANSFORMS = 1;
 	public static final int SECTION_MESH_RANGES = 2;
 	public static final int SECTION_MATERIAL_IDS = 3;
 	public static final int SECTION_OVERLAY_QUADS = 4;
+	/**
+	 * Screen-space text runs: per run {@code x f32}, {@code y f32} (baseline,
+	 * pixels), {@code rgba u32} (packed {@code (r<<24)|(g<<16)|(b<<8)|a}),
+	 * {@code fontId u16} (0 small, 1 regular, 2 bold), {@code charCount u16},
+	 * then {@code charCount} ASCII bytes. {@code elementCount} is the run count.
+	 */
 	public static final int SECTION_GLYPH_RUNS = 5;
 	/**
 	 * Per-frame camera and scene uniforms: {@code worldProj[16] f32},
@@ -67,16 +73,24 @@ public final class SceneCommandBuffer
 	/**
 	 * Raw interleaved vertices, 24 bytes each (matches the GPU plugin's dynamic
 	 * layout): {@code position[3] f32}, {@code abhsl i32} (alpha b24-31, bias
-	 * b16-23, HSL b0-15), {@code tex[4] i16} (id, u, v, 0). {@code elementCount}
-	 * is the vertex count.
+	 * b16-23, HSL b0-15), {@code tex[4] i16} = (materialId, u, v, 0) where
+	 * materials number from 1 (0 = untextured) and u/v are tile coordinates in
+	 * Q12 fixed point (1 tile = 4096). {@code elementCount} is the vertex count.
 	 */
 	public static final int SECTION_VERTEX_DATA = 7;
 	/**
 	 * Draw batches grouped by material/pipeline: {@code materialId i32},
-	 * {@code firstVertex i32}, {@code vertexCount i32} per batch.
-	 * {@code elementCount} is the batch count.
+	 * {@code firstVertex i32}, {@code vertexCount i32}, {@code flags i32} per
+	 * batch. Flag bit 0 marks a translucent batch: the renderer draws opaque
+	 * batches first (depth write on), then translucent batches with blending
+	 * (depth write off) <em>in emitted order</em> — the producer must emit
+	 * translucent batches back-to-front, as the game client sorts its own
+	 * translucent geometry. {@code elementCount} is the batch count.
 	 */
 	public static final int SECTION_DRAW_BATCHES = 8;
+
+	/** Draw-batch flag: blend this batch after all opaque batches. */
+	public static final int BATCH_TRANSLUCENT = 1;
 
 	private static final int HEADER_SIZE = 8;
 	private static final int SECTION_HEADER_SIZE = 10;
@@ -201,6 +215,13 @@ public final class SceneCommandBuffer
 	{
 		ensureCapacity(2);
 		buffer.putShort((short) value);
+		return this;
+	}
+
+	public SceneCommandBuffer putByte(int value)
+	{
+		ensureCapacity(1);
+		buffer.put((byte) value);
 		return this;
 	}
 
