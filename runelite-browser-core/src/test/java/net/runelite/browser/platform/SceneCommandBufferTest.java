@@ -25,6 +25,7 @@
 package net.runelite.browser.platform;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.List;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -84,5 +85,38 @@ public class SceneCommandBufferTest
 	public void parseRejectsBadMagic()
 	{
 		SceneCommandBuffer.parse(ByteBuffer.allocate(8));
+	}
+
+	@Test
+	public void beginPutEndSectionRoundTrips()
+	{
+		SceneCommandBuffer buffer = new SceneCommandBuffer(16);
+		buffer.beginSection(SceneCommandBuffer.SECTION_CAMERA, 1);
+		buffer.putFloat(1.5f).putFloat(-2.25f);
+		buffer.putInt(0x01020304);
+		buffer.putShortValue(0x0a0b);
+		buffer.endSection();
+
+		buffer.beginSection(SceneCommandBuffer.SECTION_DRAW_BATCHES, 2);
+		buffer.putInt(7).putInt(8).putInt(9);
+		buffer.endSection();
+
+		List<SceneCommandBuffer.Section> sections = SceneCommandBuffer.parse(buffer.finish());
+		assertEquals(2, sections.size());
+
+		SceneCommandBuffer.Section camera = sections.get(0);
+		assertEquals(SceneCommandBuffer.SECTION_CAMERA, camera.type());
+		assertEquals(1, camera.elementCount());
+		assertEquals(14, camera.payload().length);
+		ByteBuffer payload = ByteBuffer.wrap(camera.payload()).order(ByteOrder.LITTLE_ENDIAN);
+		assertEquals(1.5f, Float.intBitsToFloat(payload.getInt()), 0f);
+		assertEquals(-2.25f, Float.intBitsToFloat(payload.getInt()), 0f);
+		assertEquals(0x01020304, payload.getInt());
+		assertEquals((short) 0x0a0b, payload.getShort());
+
+		SceneCommandBuffer.Section batches = sections.get(1);
+		assertEquals(SceneCommandBuffer.SECTION_DRAW_BATCHES, batches.type());
+		assertEquals(2, batches.elementCount());
+		assertEquals(12, batches.payload().length);
 	}
 }

@@ -56,6 +56,27 @@ public final class SceneCommandBuffer
 	public static final int SECTION_MATERIAL_IDS = 3;
 	public static final int SECTION_OVERLAY_QUADS = 4;
 	public static final int SECTION_GLYPH_RUNS = 5;
+	/**
+	 * Per-frame camera and scene uniforms: {@code worldProj[16] f32},
+	 * {@code entityProj[16] f32}, {@code base[3] i32}, {@code entityTint[4] i32},
+	 * {@code cameraYaw,Pitch,X,Y,Z f32}, {@code useFog,fogDepth,fogColor i32},
+	 * {@code brightness f32}, {@code drawDistance i32}, {@code tick i32}. All
+	 * matrices are column-major. {@code elementCount} is 1.
+	 */
+	public static final int SECTION_CAMERA = 6;
+	/**
+	 * Raw interleaved vertices, 24 bytes each (matches the GPU plugin's dynamic
+	 * layout): {@code position[3] f32}, {@code abhsl i32} (alpha b24-31, bias
+	 * b16-23, HSL b0-15), {@code tex[4] i16} (id, u, v, 0). {@code elementCount}
+	 * is the vertex count.
+	 */
+	public static final int SECTION_VERTEX_DATA = 7;
+	/**
+	 * Draw batches grouped by material/pipeline: {@code materialId i32},
+	 * {@code firstVertex i32}, {@code vertexCount i32} per batch.
+	 * {@code elementCount} is the batch count.
+	 */
+	public static final int SECTION_DRAW_BATCHES = 8;
 
 	private static final int HEADER_SIZE = 8;
 	private static final int SECTION_HEADER_SIZE = 10;
@@ -63,6 +84,8 @@ public final class SceneCommandBuffer
 
 	private ByteBuffer buffer;
 	private int sectionCount;
+	private int pendingLengthPos = -1;
+	private int pendingPayloadStart = -1;
 
 	public SceneCommandBuffer()
 	{
@@ -100,6 +123,80 @@ public final class SceneCommandBuffer
 		buffer.putInt(length);
 		buffer.put(payload, offset, length);
 		sectionCount++;
+		return this;
+	}
+
+	/**
+	 * Opens a section whose payload is written incrementally with the
+	 * {@code put*} methods and closed with {@link #endSection()}. Only one
+	 * section may be open at a time. This avoids allocating an intermediate
+	 * payload array for sections built from primitives.
+	 *
+	 * @param type the section type
+	 * @param elementCount the logical element count
+	 * @return this, for chaining
+	 */
+	public SceneCommandBuffer beginSection(int type, int elementCount)
+	{
+		ensureCapacity(SECTION_HEADER_SIZE);
+		buffer.putShort((short) type);
+		buffer.putInt(elementCount);
+		pendingLengthPos = buffer.position();
+		buffer.putInt(0);
+		pendingPayloadStart = buffer.position();
+		sectionCount++;
+		return this;
+	}
+
+	/**
+	 * Closes the section opened by {@link #beginSection(int, int)}, patching its
+	 * byte length.
+	 *
+	 * @return this, for chaining
+	 */
+	public SceneCommandBuffer endSection()
+	{
+		buffer.putInt(pendingLengthPos, buffer.position() - pendingPayloadStart);
+		pendingLengthPos = -1;
+		pendingPayloadStart = -1;
+		return this;
+	}
+
+	public SceneCommandBuffer putInt(int value)
+	{
+		ensureCapacity(4);
+		buffer.putInt(value);
+		return this;
+	}
+
+	/**
+	 * Appends an IEEE-754 float as a little-endian 32-bit word (readable as
+	 * {@code DataView.getFloat32(offset, true)} in JS). Encoded via
+	 * {@link Float#floatToIntBits(float)} to avoid depending on
+	 * {@code ByteBuffer.putFloat}.
+	 *
+	 * @param value the value
+	 * @return this, for chaining
+	 */
+	public SceneCommandBuffer putFloat(float value)
+	{
+		return putInt(Float.floatToIntBits(value));
+	}
+
+	public SceneCommandBuffer putFloats(float[] values)
+	{
+		ensureCapacity(values.length * 4);
+		for (float value : values)
+		{
+			buffer.putInt(Float.floatToIntBits(value));
+		}
+		return this;
+	}
+
+	public SceneCommandBuffer putShortValue(int value)
+	{
+		ensureCapacity(2);
+		buffer.putShort((short) value);
 		return this;
 	}
 

@@ -55,7 +55,9 @@ dependencies {
 // build/teavm. See src/main/webapp/index.html for how it is loaded in a browser.
 teavm {
     wasmGC {
-        mainClass.set("net.runelite.browser.BrowserBootstrap")
+        // WasmEntry hosts every @JSExport (TeaVM only exports the main class) and
+        // delegates to BrowserBootstrap (part 1 demo) and GameWorker (part 2).
+        mainClass.set("net.runelite.browser.WasmEntry")
         targetFileName.set("runelite-browser.wasm")
         obfuscated.set(false)
         sourceMap.set(true)

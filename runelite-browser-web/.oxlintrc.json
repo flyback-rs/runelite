@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "browser": true,
+    "worker": true,
+    "es2024": true
+  },
+  "rules": {
+    "unicorn/require-post-message-target-origin": "off",
+    "no-underscore-dangle": "off"
+  },
+  "ignorePatterns": ["dist", "node_modules", "playwright-report", "test-results"]
+}
