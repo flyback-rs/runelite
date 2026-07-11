@@ -3,28 +3,32 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>RuneLite Browser — CheerpJ boot spike</title>
+		<title>RuneLite Browser — real client (CheerpJ)</title>
 		<style>
+			html,
 			body {
 				margin: 0;
+				height: 100%;
 				background: #16161a;
 				color: #d7d7db;
 				font: 13px/1.5 ui-monospace, monospace;
 			}
+			#display {
+				width: 100%;
+				height: 70vh;
+			}
 			#log {
 				white-space: pre-wrap;
 				padding: 12px;
-			}
-			#display {
-				display: block;
+				margin: 0;
 			}
 		</style>
 	</head>
 	<body>
-		<!-- CheerpJ renders the applet's AWT surface into this element. -->
+		<!-- CheerpJ renders the client's AWT frame into this element. -->
 		<div id="display"></div>
 		<pre id="log"></pre>
-		<script src="https://cjrtnc.leaningtech.com/4.2/loader.js"></script>
+		<script src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
 		<script src="./boot.js"></script>
 	</body>
 </html>

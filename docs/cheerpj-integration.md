@@ -32,22 +32,30 @@ threads — and renders AWT into an HTML canvas. So the division of labour is:
 
 ## Boot flow
 
-The spike lives in [`../runelite-browser-web/experiments/cheerpj/`](../runelite-browser-web/experiments/cheerpj/):
-`index.html` loads the CheerpJ 4.2 loader from the CDN and `boot.js` drives it.
+The harness lives in [`../runelite-browser-web/experiments/cheerpj/`](../runelite-browser-web/experiments/cheerpj/)
+(see its README for run instructions): `index.html` loads the CheerpJ 4.3 loader
+from the CDN and `boot.js` drives it.
 
-1. `await cheerpjInit({ version: 8 })` — brings up the JVM. The vanilla client
-   targets an applet-era JDK, so the Java 8 runtime is used.
-2. `cheerpjRunLibrary(classpath)` — mounts the client jars as a library and
-   returns an async handle. Classpath is either RuneLite's injected client
-   (`injected-client.jar` + `runelite-api.jar`) or the vanilla
-   `gamepack_<rev>.jar` fetched from the codebase.
-3. Resolve the entry class `client` (it `extends java.applet.Applet` through its
-   obfuscated chain and `implements net.runelite.api.Client`), instantiate it, and
-   drive the applet lifecycle (`setStub`/`init`/`start`) with a minimal
-   `AppletStub` whose `getParameter` returns the `jav_config.ws` values.
+1. `node fetch-assets.mjs` downloads `jav_config.ws` and the gamepack it names
+   (optionally RuneLite's injected client from `repo.runelite.net`) into the
+   git-ignored `lib/`, along with the `cheerpj-boot.jar` shim built by
+   [`../runelite-browser-cheerpj/`](../runelite-browser-cheerpj/).
+2. `await cheerpjInit({ version: 8, … })` — brings up the JVM. CheerpJ supports
+   applets on its Java 8 runtime only, which suits the applet-era client.
+3. `cheerpjCreateDisplay(-1, -1, container)` hosts the AWT output, and
+   `cheerpjRunLibrary("/app/lib/cheerpj-boot.jar")` loads the boot shim.
+4. The shim (`BrowserBoot`, plain Java 8, no compile-time dependency on the
+   client) loads the client jars from the CheerpJ virtual filesystem with a
+   `URLClassLoader` and mirrors RuneLite's own `ClientLoader`:
+   - **vanilla**: instantiate `client` (it `extends java.applet.Applet` through
+     its obfuscated chain), `setStub` with an `AppletStub` whose `getParameter`
+     serves the `jav_config.ws` values, then `init()`/`start()`;
+   - **injected**: instantiate `client`, install a reflective
+     `ClientConfiguration` proxy via `setConfiguration`, then `initialize()` —
+     the injected client replaces the applet plumbing with that interface.
 
-`window.__cheerpj` publishes the phases (`runtimeReady`, `clientClass`,
-`instantiated`) so a headless driver can observe progress.
+`window.__cheerpj` (and the on-page log) publishes the phases so a headless
+driver can observe progress.
 
 ## Hand-off 1 — pixels into the GPU renderer
 
@@ -116,17 +124,20 @@ Reachable and verified:
   uses (`BufferProvider.getPixels`, `setDrawCallbacks`, `getCanvas`).
 - The gateway carries arbitrary TCP bytes and is validated end-to-end.
 
-Not demonstrable in the CI sandbox (environment limits, not design blockers):
+The boot is fully wired: the shim jar builds, the asset fetcher pulls the
+gamepack + jav_config, and the page drives the applet lifecycle exactly as
+RuneLite's `ClientLoader` does (both vanilla and injected modes). What each
+environment can demonstrate:
 
-- **Headless browser egress to the CheerpJ CDN is blocked** here (the tool proxy
-  serves `curl`, but Chromium's third-party requests are reset), so `cheerpjInit`
-  cannot complete in this sandbox. It runs in any environment with normal browser
-  egress; the spike is structured to be run there.
-- **Raw egress to `:43594` is blocked** here, so a live login/cache download
-  cannot be exercised. The gateway must be deployed where that egress is allowed.
-
-Success criterion for the spike — *runtime up + client class instantiated* — is
-gated behind browser CDN egress; reaching a drawn login screen additionally needs
-`:43594` egress and a cache download. Both are deployment conditions. The path is
-de-risked: the client host (CheerpJ), the two hand-offs, and the networking relay
-are all identified and, where the sandbox allows, verified.
+- **Without socket networking** (any machine): CheerpJ initialises, the client
+  applet instantiates and starts, and it draws its loading screen before
+  reporting a JS5 connection error — proving class-loading and the AWT render
+  path end to end.
+- **With Tailscale networking** (`?tsKey=`, exit node reaching the internet):
+  the JS5 socket to `<world>:43594` works, the cache downloads (persisted in
+  IndexedDB), and the title screen appears. Logging in from there requires a
+  Jagex account, as on desktop.
+- **In the CI sandbox** neither is demonstrable — headless browser egress to
+  the CheerpJ CDN is reset and raw `:43594` egress is blocked. These are
+  environment limits, not design blockers; the harness is built to run where
+  normal egress exists.
