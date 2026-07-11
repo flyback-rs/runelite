@@ -27,27 +27,53 @@ package net.runelite.browser.platform.browser;
 import net.runelite.browser.platform.DuplexStream;
 import net.runelite.browser.platform.GameEndpoint;
 import net.runelite.browser.platform.PlatformNetwork;
+import net.runelite.browser.platform.Transport;
 
 /**
- * Placeholder {@link PlatformNetwork}. Browsers cannot open raw TCP sockets, so a
- * real implementation wraps a {@code WebSocket} (or {@code WebTransport}) to a
- * trusted gateway into a {@link DuplexStream}. That gateway and the Jagex-approved
- * transport are a later part of the port, so for now this reports that networking
- * is not yet available rather than silently failing.
+ * Browser {@link PlatformNetwork}. Browsers cannot open raw TCP sockets, so every
+ * connection is tunnelled through a trusted gateway as a binary {@code WebSocket}:
+ * the gateway is a blind byte relay that forwards the stream to the game world's
+ * TCP port. The gateway base URL comes from the {@code self.runeliteGatewayUrl}
+ * global set by the shell, or is supplied explicitly (used by the network probe).
  */
 public final class BrowserPlatformNetwork implements PlatformNetwork
 {
+	private final String gatewayBase;
+
+	public BrowserPlatformNetwork()
+	{
+		this(Js.gatewayBase());
+	}
+
+	public BrowserPlatformNetwork(String gatewayBase)
+	{
+		this.gatewayBase = gatewayBase;
+	}
+
 	@Override
 	public DuplexStream connect(GameEndpoint endpoint)
 	{
-		switch (endpoint.getTransport())
+		if (endpoint.getTransport() == Transport.TCP)
 		{
-			case TCP:
-				throw new UnsupportedOperationException(
-					"Direct TCP is not available in the browser; a WSS/WebTransport gateway is required");
-			default:
-				throw new UnsupportedOperationException(
-					"Browser gateway transport is not implemented yet (endpoint " + endpoint + ")");
+			throw new UnsupportedOperationException(
+				"Direct TCP is not available in the browser; a WSS gateway is required");
 		}
+		if (gatewayBase == null || gatewayBase.isEmpty())
+		{
+			throw new IllegalStateException(
+				"No gateway configured; set self.runeliteGatewayUrl before connecting");
+		}
+		return new WebSocketDuplexStream(buildUrl(gatewayBase, endpoint.getHost(), endpoint.getPort()));
+	}
+
+	/** Builds the gateway connect URL: {@code <base>/connect?host=<host>&port=<port>}. */
+	static String buildUrl(String base, String host, int port)
+	{
+		String trimmed = base;
+		while (trimmed.endsWith("/"))
+		{
+			trimmed = trimmed.substring(0, trimmed.length() - 1);
+		}
+		return trimmed + "/connect?host=" + host + "&port=" + port;
 	}
 }

@@ -31,6 +31,7 @@ const options = {
 		main: resolve(root, "src/main.ts"),
 		"render.worker": resolve(root, "src/workers/render.worker.ts"),
 		"game.worker": resolve(root, "src/workers/game.worker.ts"),
+		netprobe: resolve(root, "src/netprobe.ts"),
 		sw: resolve(root, "src/sw.ts"),
 	},
 	entryNames: "[name]",

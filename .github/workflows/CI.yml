@@ -72,6 +72,12 @@ jobs:
         working-directory: runelite-browser-web
         run: npm ci
 
+      # The networking E2E spawns the gateway from its TypeScript source, so its
+      # runtime dependency (ws) must be installed too.
+      - name: Install gateway dependencies
+        working-directory: runelite-browser-gateway
+        run: npm ci
+
       - name: Install Playwright Chromium
         working-directory: runelite-browser-web
         run: npx playwright install --with-deps chromium
@@ -87,6 +93,35 @@ jobs:
 
       # WebGL2 is the reliable headless backend; WebGPU is attempted only in
       # environments with a GPU adapter (run locally with `--project=webgpu`).
-      - name: End-to-end render smoke (WebGL2)
+      # This also runs the networking round-trip E2E (browser → gateway → TCP).
+      - name: End-to-end smoke (WebGL2)
         working-directory: runelite-browser-web
         run: npx playwright test --project=webgl2
+
+  gateway:
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: runelite-browser-gateway
+        run: npm ci
+
+      - name: Lint, format, typecheck, build, test
+        working-directory: runelite-browser-gateway
+        run: |
+          npm run lint
+          npm run format:check
+          npm run typecheck
+          npm run build
+          npm run test

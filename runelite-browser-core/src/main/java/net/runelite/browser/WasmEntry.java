@@ -24,6 +24,7 @@
  */
 package net.runelite.browser;
 
+import net.runelite.browser.platform.browser.NetProbe;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.typedarrays.Int8Array;
 
@@ -69,5 +70,17 @@ public final class WasmEntry
 	public static int gameProduceFrame(Int8Array target, int frameIndex)
 	{
 		return GameWorker.produceFrame(target, frameIndex);
+	}
+
+	@JSExport
+	public static void netProbeStart(String gatewayUrl, String host, int port, String message)
+	{
+		NetProbe.start(gatewayUrl, host, port, message);
+	}
+
+	@JSExport
+	public static String netProbeResult()
+	{
+		return NetProbe.result();
 	}
 }

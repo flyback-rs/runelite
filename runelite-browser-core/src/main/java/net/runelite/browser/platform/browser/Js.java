@@ -52,4 +52,8 @@ final class Js
 
 	@JSBody(params = {"message"}, script = "if (window.console) { window.console.log(message); }")
 	static native void consoleLog(String message);
+
+	@JSBody(params = {}, script =
+		"return (typeof self !== 'undefined' && self.runeliteGatewayUrl) ? self.runeliteGatewayUrl : '';")
+	static native String gatewayBase();
 }
