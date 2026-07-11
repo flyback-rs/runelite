@@ -60,7 +60,12 @@ export interface GameWheel {
 	readonly type: "wheel";
 	readonly dy: number;
 }
-export type GameIn = GameInit | GamePointer | GameKey | GameWheel;
+export interface GameResize {
+	readonly type: "resize";
+	readonly width: number;
+	readonly height: number;
+}
+export type GameIn = GameInit | GamePointer | GameKey | GameWheel | GameResize;
 
 // Game worker -> main thread.
 export interface GameReady {

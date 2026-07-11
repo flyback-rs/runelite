@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+/* oxlint-disable no-await-in-loop -- sequential polling is intentional */
 import type { EngineStatus } from "../src/shell.ts";
 
 // Clear colour is ~[15, 18, 23]; a pixel far from it means geometry was drawn.

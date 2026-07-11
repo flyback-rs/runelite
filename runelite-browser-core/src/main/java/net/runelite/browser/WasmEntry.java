@@ -54,6 +54,12 @@ public final class WasmEntry
 	}
 
 	@JSExport
+	public static void gameResize(int width, int height)
+	{
+		GameWorker.resize(width, height);
+	}
+
+	@JSExport
 	public static int gameFrameCapacity()
 	{
 		return GameWorker.frameCapacity();

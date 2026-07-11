@@ -56,6 +56,20 @@ public final class GameWorker
 	}
 
 	/**
+	 * Updates the viewport so the projection aspect ratio tracks canvas resizes.
+	 *
+	 * @param width new viewport width
+	 * @param height new viewport height
+	 */
+	public static void resize(int width, int height)
+	{
+		if (source != null)
+		{
+			source.resize(width, height);
+		}
+	}
+
+	/**
 	 * @return the maximum bytes {@link #produceFrame} can write, so JS can size
 	 *         each ring slot to hold a whole frame
 	 */
@@ -75,7 +89,12 @@ public final class GameWorker
 	{
 		source.fill(frame, frameIndex);
 		ByteBuffer view = frame.finish();
-		int length = view.remaining();
+		// Never write past the ring slot (a frame that outgrew FRAME_CAPACITY is
+		// truncated to a valid length rather than corrupting the next slot).
+		int length = Math.min(view.remaining(), target.getLength());
+		// WasmGC has no zero-copy view between a Java byte[] and a JS typed array,
+		// so this copies element-wise. It is only ever the small synthetic scene
+		// frames; the real client renders through CheerpJ, not this path.
 		for (int i = 0; i < length; i++)
 		{
 			target.set(i, view.get());

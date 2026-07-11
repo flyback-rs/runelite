@@ -60,9 +60,20 @@ public final class SceneReplaySource
 		{4, 5, 1, 0, 52},
 	};
 
-	private final float aspect;
+	private float aspect;
 
 	public SceneReplaySource(int width, int height)
+	{
+		resize(width, height);
+	}
+
+	/**
+	 * Updates the projection aspect ratio for a new viewport size.
+	 *
+	 * @param width viewport width
+	 * @param height viewport height
+	 */
+	public void resize(int width, int height)
 	{
 		this.aspect = height > 0 ? (float) width / (float) height : 1f;
 	}

@@ -1,5 +1,8 @@
 import type { BackendPreference } from "./backends/create.ts";
 import type { GameIn, GameOut, RenderIn, RenderOut } from "./protocol.ts";
+
+declare const __DEV__: boolean;
+
 import { buildShell, type EngineStatus, installPanelHost, updateHud } from "./shell.ts";
 import { Ring } from "./transport/ring.ts";
 
@@ -77,7 +80,7 @@ function main(): void {
 	gameWorker.postMessage(gameInit);
 
 	wireInput(shell.canvas, gameWorker);
-	wireResize(shell.canvas, renderWorker);
+	wireResize(shell.canvas, renderWorker, gameWorker);
 	publishPanel(
 		"runelite-browser",
 		JSON.stringify({
@@ -131,7 +134,9 @@ function wireInput(canvas: HTMLCanvasElement, gameWorker: Worker): void {
 	});
 }
 
-function wireResize(canvas: HTMLCanvasElement, renderWorker: Worker): void {
+function wireResize(canvas: HTMLCanvasElement, renderWorker: Worker, gameWorker: Worker): void {
+	// The first callback fires with the post-layout size, correcting the
+	// pre-layout default the workers were initialised with.
 	const observer = new ResizeObserver((entries) => {
 		const entry = entries[0];
 		if (!entry) {
@@ -140,12 +145,15 @@ function wireResize(canvas: HTMLCanvasElement, renderWorker: Worker): void {
 		const width = Math.max(1, Math.round(entry.contentRect.width));
 		const height = Math.max(1, Math.round(entry.contentRect.height));
 		renderWorker.postMessage({ type: "resize", width, height } satisfies RenderIn);
+		gameWorker.postMessage({ type: "resize", width, height } satisfies GameIn);
 	});
 	observer.observe(canvas);
 }
 
 async function registerServiceWorker(): Promise<void> {
-	if (!("serviceWorker" in navigator)) {
+	// The service worker caches the app shell; skip it in dev so edits aren't
+	// masked by a stale cache (build.mjs defines __DEV__).
+	if (__DEV__ || !("serviceWorker" in navigator)) {
 		return;
 	}
 	try {

@@ -21,6 +21,7 @@ export class Gl2Backend implements Backend {
 	private readonly overlay: {
 		program: WebGLProgram;
 		vao: WebGLVertexArrayObject;
+		vbo: WebGLBuffer;
 		uRect: WebGLUniformLocation;
 		uViewport: WebGLUniformLocation;
 		uColor: WebGLUniformLocation;
@@ -68,6 +69,7 @@ export class Gl2Backend implements Backend {
 		this.overlay = {
 			program: overlayProgram,
 			vao: overlayVao,
+			vbo: overlayVbo,
 			uRect: uniform(gl, overlayProgram, "uRect"),
 			uViewport: uniform(gl, overlayProgram, "uViewport"),
 			uColor: uniform(gl, overlayProgram, "uColor"),
@@ -139,6 +141,7 @@ export class Gl2Backend implements Backend {
 		gl.deleteVertexArray(this.scene.vao);
 		gl.deleteVertexArray(this.overlay.vao);
 		gl.deleteBuffer(this.scene.vbo);
+		gl.deleteBuffer(this.overlay.vbo);
 	}
 }
 

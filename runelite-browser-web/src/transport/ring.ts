@@ -101,6 +101,9 @@ export class Ring {
 
 	/** Publishes the slot filled by {@link acquireWrite}. */
 	commit(length: number): void {
+		if (length < 0 || length > this.layout.slotSize) {
+			throw new RangeError(`frame length ${length} exceeds slot size ${this.layout.slotSize}`);
+		}
 		const seq = this.writeSeq + 1;
 		const slot = this.slotIndex(seq);
 		Atomics.store(this.slotSeq, this.lenField(slot), length);

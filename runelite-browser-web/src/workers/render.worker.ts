@@ -14,8 +14,10 @@ let ring: Ring | null = null;
 let canvas: OffscreenCanvas | null = null;
 let lastFrame: Frame | null = null;
 let frameCount = 0;
+let errorCount = 0;
 let lastStatsAt = 0;
-const frameTimes: number[] = [];
+let lastLoopAt = 0;
+const intervals: number[] = [];
 
 function post(message: RenderOut): void {
 	ctx.postMessage(message);
@@ -54,6 +56,16 @@ async function init(
 
 function loop(): void {
 	const start = performance.now();
+	if (lastLoopAt > 0) {
+		// Interval between loop starts is the real frame time; render cost alone
+		// would report a misleadingly high fps since the loop is throttled.
+		intervals.push(start - lastLoopAt);
+		if (intervals.length > 120) {
+			intervals.shift();
+		}
+	}
+	lastLoopAt = start;
+
 	try {
 		if (ring && backend) {
 			const latest = ring.readLatest();
@@ -66,16 +78,13 @@ function loop(): void {
 			}
 		}
 	} catch (error) {
-		post({ type: "error", message: describe(error) });
-		return;
+		// Report but keep rendering: a transient GL error or bad frame must not
+		// permanently stop the render loop.
+		errorCount++;
+		post({ type: "error", message: `render (${errorCount}): ${describe(error)}` });
 	}
 
 	const elapsed = performance.now() - start;
-	frameTimes.push(elapsed);
-	if (frameTimes.length > 120) {
-		frameTimes.shift();
-	}
-
 	const now = performance.now();
 	if (now - lastStatsAt > STATS_INTERVAL_MS) {
 		lastStatsAt = now;
@@ -83,7 +92,7 @@ function loop(): void {
 		post({
 			type: "stats",
 			frameCount,
-			medianMs: median(frameTimes),
+			medianMs: median(intervals),
 			sample: sample ? [...sample] : null,
 		});
 	}

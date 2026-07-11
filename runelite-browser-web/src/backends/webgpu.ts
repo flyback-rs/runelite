@@ -1,4 +1,4 @@
-import type { Frame } from "../scene/command-buffer.ts";
+import { type Frame, VERTEX_STRIDE } from "../scene/command-buffer.ts";
 import overlayShader from "../shaders/overlay.wgsl";
 import sceneShader from "../shaders/scene.wgsl";
 import { type Backend, CLEAR_COLOR, unpackRgba } from "./types.ts";
@@ -191,18 +191,18 @@ export class GpuBackend implements Backend {
 			this.cameraData.set(frame.camera.entityProj, 16);
 			this.cameraData[32] = frame.camera.brightness || 1;
 			this.device.queue.writeBuffer(this.cameraBuffer, 0, this.cameraData);
-			this.device.queue.writeBuffer(
-				this.vertexBuffer,
-				0,
-				frame.vertices,
-				0,
-				Math.min(frame.vertices.byteLength, VERTEX_CAPACITY),
-			);
+			const uploadBytes = Math.min(frame.vertices.byteLength, VERTEX_CAPACITY);
+			this.device.queue.writeBuffer(this.vertexBuffer, 0, frame.vertices, 0, uploadBytes);
+			// Only what fit in the fixed-size vertex buffer was uploaded; drawing a
+			// batch past that range is a WebGPU validation error, so skip it.
+			const uploadedVerts = Math.floor(uploadBytes / VERTEX_STRIDE);
 			pass.setPipeline(this.scenePipeline);
 			pass.setBindGroup(0, this.sceneBindGroup);
 			pass.setVertexBuffer(0, this.vertexBuffer);
 			for (const batch of frame.batches) {
-				pass.draw(batch.vertexCount, 1, batch.firstVertex, 0);
+				if (batch.firstVertex + batch.vertexCount <= uploadedVerts) {
+					pass.draw(batch.vertexCount, 1, batch.firstVertex, 0);
+				}
 			}
 		}
 

@@ -138,6 +138,10 @@ public final class SceneCommandBuffer
 	 */
 	public SceneCommandBuffer beginSection(int type, int elementCount)
 	{
+		if (pendingLengthPos != -1)
+		{
+			throw new IllegalStateException("a section is already open; call endSection() first");
+		}
 		ensureCapacity(SECTION_HEADER_SIZE);
 		buffer.putShort((short) type);
 		buffer.putInt(elementCount);
@@ -269,6 +273,11 @@ public final class SceneCommandBuffer
 			int type = b.getShort() & 0xffff;
 			int elementCount = b.getInt();
 			int length = b.getInt();
+			if (length < 0 || length > b.remaining())
+			{
+				throw new IllegalArgumentException("Corrupt scene command buffer: section "
+					+ i + " length " + length + " exceeds remaining " + b.remaining());
+			}
 			byte[] payload = new byte[length];
 			b.get(payload);
 			sections.add(new Section(type, elementCount, payload));

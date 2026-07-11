@@ -1,5 +1,5 @@
 import { build, context } from "esbuild";
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,12 +15,16 @@ if (existsSync(resolve(root, "public"))) {
 }
 for (const file of ["runelite-browser.wasm", "runelite-browser.wasm-runtime.js"]) {
 	const src = resolve(wasmDir, file);
-	if (existsSync(src)) {
-		cpSync(src, resolve(outdir, file));
-	} else {
-		console.warn(`[build] missing ${file} — run "gradle buildWasmGC" first`);
+	if (!existsSync(src)) {
+		throw new Error(
+			`[build] missing ${file} in ${wasmDir} — run "gradle -p ../runelite-browser-core buildWasmGC" first`,
+		);
 	}
+	cpSync(src, resolve(outdir, file));
 }
+// The generated runtime is a classic IIFE assigning a module-local `TeaVM`.
+// Append an ESM export so the game worker can `import()` it (CSP-safe; no eval).
+appendFileSync(resolve(outdir, "runelite-browser.wasm-runtime.js"), "\nexport default TeaVM;\n");
 
 const options = {
 	entryPoints: {
@@ -37,6 +41,7 @@ const options = {
 	platform: "browser",
 	sourcemap: true,
 	minify: !watch,
+	define: { __DEV__: watch ? "true" : "false" },
 	loader: { ".wgsl": "text", ".glsl": "text" },
 	logLevel: "info",
 };

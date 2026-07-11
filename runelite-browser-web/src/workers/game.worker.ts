@@ -8,6 +8,7 @@ const TARGET_FRAME_MS = 1000 / 60;
 /** The @JSExport surface of the WasmGC module (see Java WasmEntry). */
 interface GameExports {
 	gameInit(width: number, height: number): void;
+	gameResize(width: number, height: number): void;
 	gameFrameCapacity(): number;
 	gameProduceFrame(target: Int8Array, frameIndex: number): number;
 }
@@ -22,6 +23,7 @@ let ring: Ring | null = null;
 let game: GameExports | null = null;
 let frameIndex = 0;
 let running = false;
+let errorCount = 0;
 
 function post(message: GameOut): void {
 	ctx.postMessage(message);
@@ -31,21 +33,25 @@ ctx.addEventListener("message", (event: MessageEvent<GameIn>) => {
 	const message = event.data;
 	if (message.type === "init") {
 		void start(message);
+	} else if (message.type === "resize" && game) {
+		game.gameResize(message.width, message.height);
 	}
+	// pointer/key/wheel are forwarded for the input transport; the synthetic
+	// scene source ignores them (the real client will consume them).
 });
 
 /**
- * Loads the TeaVM WasmGC runtime. The generated runtime is a classic IIFE that
- * assigns a global `TeaVM`; a module worker cannot `importScripts`, so it is
- * evaluated in a function scope and its `TeaVM` returned. The source is our own
- * build artifact served same-origin.
+ * Loads the TeaVM WasmGC runtime. `build.mjs` appends an ESM default export to
+ * the copied runtime, so it can be imported directly (no `new Function`, which a
+ * Content-Security-Policy would forbid).
  */
 async function loadTeaVM(runtimeUrl: string): Promise<TeaVMApi> {
-	const response = await fetch(runtimeUrl);
-	const code = await response.text();
-	// oxlint-disable-next-line no-new-func
-	const factory = new Function(`${code}\nreturn TeaVM;`) as () => TeaVMApi;
-	return factory();
+	const module = (await import(/* @vite-ignore */ runtimeUrl)) as { default?: TeaVMApi };
+	const teavm = module.default ?? (globalThis as { TeaVM?: TeaVMApi }).TeaVM;
+	if (!teavm) {
+		throw new Error("TeaVM runtime did not export its API");
+	}
+	return teavm;
 }
 
 async function start(message: Extract<GameIn, { type: "init" }>): Promise<void> {
@@ -68,11 +74,21 @@ function loop(): void {
 		return;
 	}
 	const began = performance.now();
-	const { payload } = ring.acquireWrite();
-	// A signed view over the same shared bytes for the Java Int8Array parameter.
-	const target = new Int8Array(payload.buffer, payload.byteOffset, payload.byteLength);
-	const length = game.gameProduceFrame(target, frameIndex);
-	ring.commit(length);
-	frameIndex++;
+	try {
+		const { payload } = ring.acquireWrite();
+		// A signed view over the same shared bytes for the Java Int8Array parameter.
+		const target = new Int8Array(payload.buffer, payload.byteOffset, payload.byteLength);
+		const length = game.gameProduceFrame(target, frameIndex);
+		ring.commit(length);
+		frameIndex++;
+	} catch (error) {
+		// Report but keep producing: one bad frame must not kill the game loop.
+		errorCount++;
+		post({ type: "error", message: `frame ${frameIndex} (${errorCount}): ${describe(error)}` });
+	}
 	setTimeout(loop, Math.max(0, TARGET_FRAME_MS - (performance.now() - began)));
+}
+
+function describe(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
 }

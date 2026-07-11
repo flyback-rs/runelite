@@ -36,6 +36,12 @@ describe("Ring", () => {
 		expect([...frame!.data]).toEqual([7, 107]);
 	});
 
+	it("rejects a committed length larger than the slot", () => {
+		const ring = Ring.create(16, 3);
+		ring.acquireWrite();
+		expect(() => ring.commit(17)).toThrow(/exceeds slot size/);
+	});
+
 	it("attaches to an existing shared buffer with the same view of data", () => {
 		const producer = Ring.create(32, 3);
 		const consumer = Ring.attach(producer.description);
