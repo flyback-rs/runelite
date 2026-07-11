@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,40 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
+import java.nio.ByteBuffer;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
+/**
+ * Key/value blob storage. The desktop implementation is backed by files under
+ * {@code ~/.runelite}; the browser implementation is backed by {@code localStorage}
+ * (and, in later parts, IndexedDB or OPFS for larger blobs such as the cache).
+ */
+public interface PlatformStorage
+{
+	/**
+	 * Reads the blob stored under {@code key}.
+	 *
+	 * @param key the key
+	 * @return the stored bytes, or {@code null} if the key is absent
+	 */
+	AsyncResult<ByteBuffer> read(String key);
 
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+	/**
+	 * Writes {@code data} under {@code key}, replacing any existing value. The
+	 * remaining bytes of {@code data} are stored.
+	 *
+	 * @param key the key
+	 * @param data the bytes to store
+	 * @return a result completing when the write is durable
+	 */
+	AsyncResult<Void> write(String key, ByteBuffer data);
+
+	/**
+	 * Removes any blob stored under {@code key}.
+	 *
+	 * @param key the key
+	 * @return a result completing when the key is removed
+	 */
+	AsyncResult<Void> delete(String key);
+}

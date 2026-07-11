@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
-
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * Consumes a packed {@link SceneCommandBuffer} once per frame. The browser
+ * implementation (a later part) uploads the dirty ranges to WebGPU/WebGL2 running
+ * against an {@code OffscreenCanvas}; keeping the interface at the granularity of
+ * a whole frame buffer avoids per-tile or per-actor calls across the Wasm/JS
+ * boundary.
+ */
+public interface PlatformRenderer
+{
+	/**
+	 * Submits one frame's worth of draw commands.
+	 *
+	 * @param commands the packed command buffer for this frame
+	 */
+	void submitScene(SceneCommandBuffer commands);
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,25 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
-
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * The kinds of components a {@link PanelModel} can contain. This is a small,
+ * shell-neutral vocabulary that the desktop Swing panels map onto and that a web
+ * shell renders as DOM.
+ */
+public enum ComponentType
+{
+	/** Static text. */
+	LABEL,
+	/** A clickable button. */
+	BUTTON,
+	/** A boolean on/off control. */
+	TOGGLE,
+	/** A numeric range control. */
+	SLIDER,
+	/** A free-text input. */
+	TEXT_INPUT,
+	/** A titled grouping of subsequent components. */
+	SECTION
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,33 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
+/**
+ * The bundle of platform implementations for one host (desktop JVM or browser).
+ * A single instance is installed into {@link Platform} at start-up so the rest of
+ * the client can resolve platform services without a dependency-injection
+ * container (Guice relies on reflection that TeaVM cannot compile).
+ */
+public interface PlatformServices
+{
+	/**
+	 * @return the network implementation
+	 */
+	PlatformNetwork network();
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
+	/**
+	 * @return the storage implementation
+	 */
+	PlatformStorage storage();
 
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+	/**
+	 * @return the renderer implementation
+	 */
+	PlatformRenderer renderer();
+
+	/**
+	 * @return the UI implementation
+	 */
+	PlatformUi ui();
+}

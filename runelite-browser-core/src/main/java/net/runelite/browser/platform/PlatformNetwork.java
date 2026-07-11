@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,20 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
-
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * Opens byte streams to game/cache endpoints. The desktop implementation uses
+ * TCP sockets directly; the browser implementation tunnels through a WSS or
+ * WebTransport gateway.
+ */
+public interface PlatformNetwork
+{
+	/**
+	 * Connects to the given endpoint.
+	 *
+	 * @param endpoint the endpoint to connect to
+	 * @return the connected stream
+	 */
+	DuplexStream connect(GameEndpoint endpoint);
+}

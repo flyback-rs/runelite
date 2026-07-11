@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,41 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
+import java.nio.ByteBuffer;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
+/**
+ * A bidirectional byte stream, the platform-neutral replacement for a
+ * {@link java.net.Socket}. Reads and writes are asynchronous so the same
+ * interface works over a JVM socket, a browser {@code WebSocket}, or
+ * {@code WebTransport}.
+ */
+public interface DuplexStream
+{
+	/**
+	 * Reads available bytes into {@code dst}.
+	 *
+	 * @param dst the destination buffer
+	 * @return the number of bytes read, or {@code -1} at end of stream
+	 */
+	AsyncResult<Integer> read(ByteBuffer dst);
 
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+	/**
+	 * Writes the remaining bytes of {@code src}.
+	 *
+	 * @param src the source buffer
+	 * @return a result completing when the bytes have been accepted
+	 */
+	AsyncResult<Void> write(ByteBuffer src);
+
+	/**
+	 * @return whether the stream is currently open
+	 */
+	boolean isOpen();
+
+	/**
+	 * Closes the stream, releasing its resources.
+	 */
+	void close();
+}

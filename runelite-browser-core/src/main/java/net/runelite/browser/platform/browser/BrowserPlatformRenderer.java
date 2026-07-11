@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,23 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform.browser;
 
-rootProject.name = "runelite"
+import net.runelite.browser.platform.PlatformRenderer;
+import net.runelite.browser.platform.SceneCommandBuffer;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * Placeholder {@link PlatformRenderer}. The WebGPU/WebGL2 renderer that consumes
+ * the command buffer against an {@code OffscreenCanvas} is a later part of the
+ * port; for now the buffer is accepted and its size recorded to the console so
+ * the submit path can be exercised without a GPU backend.
+ */
+public final class BrowserPlatformRenderer implements PlatformRenderer
+{
+	@Override
+	public void submitScene(SceneCommandBuffer commands)
+	{
+		Js.consoleLog("[renderer] scene submitted: " + commands.getSectionCount()
+			+ " sections, " + commands.size() + " bytes");
+	}
+}

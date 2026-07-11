@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,22 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform.browser;
 
-rootProject.name = "runelite"
+import net.runelite.browser.platform.PanelModel;
+import net.runelite.browser.platform.PlatformUi;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * {@link PlatformUi} that hands each panel model to the host page as JSON. The
+ * page defines {@code window.runelitePublishPanel(pluginId, json)} (see
+ * src/main/webapp/index.html), which renders the model as DOM. This keeps panel
+ * layout on the JS side and out of the WasmGC module.
+ */
+public final class BrowserPlatformUi implements PlatformUi
+{
+	@Override
+	public void publishPanelModel(String pluginId, PanelModel model)
+	{
+		Js.publishPanel(pluginId, model.toJson());
+	}
+}

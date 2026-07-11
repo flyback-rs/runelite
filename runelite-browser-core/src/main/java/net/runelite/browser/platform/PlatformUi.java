@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
-
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * Publishes declarative panel models to the host shell. This replaces the Swing
+ * {@code PluginPanel}: instead of building AWT components, a plugin describes its
+ * side panel as a {@link PanelModel} and the shell renders it (as DOM in the
+ * browser, and as a log/adapter on the desktop reference implementation).
+ */
+public interface PlatformUi
+{
+	/**
+	 * Publishes (or replaces) the panel for the given plugin.
+	 *
+	 * @param pluginId the owning plugin's id
+	 * @param model the declarative panel model
+	 */
+	void publishPanelModel(String pluginId, PanelModel model);
+}

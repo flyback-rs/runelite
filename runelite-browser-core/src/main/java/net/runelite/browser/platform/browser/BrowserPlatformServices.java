@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,46 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform.browser;
 
-rootProject.name = "runelite"
+import net.runelite.browser.platform.PlatformNetwork;
+import net.runelite.browser.platform.PlatformRenderer;
+import net.runelite.browser.platform.PlatformServices;
+import net.runelite.browser.platform.PlatformStorage;
+import net.runelite.browser.platform.PlatformUi;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
+/**
+ * The browser bundle of {@link PlatformServices}, installed by
+ * {@link net.runelite.browser.BrowserBootstrap}.
+ */
+public final class BrowserPlatformServices implements PlatformServices
+{
+	private final PlatformNetwork network = new BrowserPlatformNetwork();
+	private final PlatformStorage storage = new BrowserPlatformStorage();
+	private final PlatformRenderer renderer = new BrowserPlatformRenderer();
+	private final PlatformUi ui = new BrowserPlatformUi();
 
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+	@Override
+	public PlatformNetwork network()
+	{
+		return network;
+	}
+
+	@Override
+	public PlatformStorage storage()
+	{
+		return storage;
+	}
+
+	@Override
+	public PlatformRenderer renderer()
+	{
+		return renderer;
+	}
+
+	@Override
+	public PlatformUi ui()
+	{
+		return ui;
+	}
+}
