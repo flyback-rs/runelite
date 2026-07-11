@@ -1,0 +1,2 @@
+# Jagex/RuneLite client jars are not redistributed here; drop them in lib/ to run.
+lib/*.jar
