@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_RULES, isAllowed, parseRules } from "../src/allowlist.ts";
 
 describe("allowlist", () => {
-	it("permits OSRS worlds on the game port by default", () => {
+	it("permits OSRS worlds on the game and 443 fallback ports by default", () => {
 		expect(isAllowed("oldschool1.runescape.com", 43594, DEFAULT_RULES)).toBe(true);
 		expect(isAllowed("oldschool42.runescape.com", 43594, DEFAULT_RULES)).toBe(true);
 		expect(isAllowed("oldschool.runescape.com", 43594, DEFAULT_RULES)).toBe(true);
+		expect(isAllowed("oldschool1.runescape.com", 443, DEFAULT_RULES)).toBe(true);
 	});
 
 	it("rejects other hosts, ports, and out-of-range ports", () => {

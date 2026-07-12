@@ -8,9 +8,13 @@ export interface AllowRule {
 	readonly port: number;
 }
 
-/** Default: any OSRS world on the game/JS5 port. */
+/**
+ * Default: any OSRS world on the game/JS5 port (43594) and on 443, the
+ * firewall-friendly fallback port the client also accepts game traffic on.
+ */
 export const DEFAULT_RULES: readonly AllowRule[] = [
 	{ host: /^oldschool\d*\.runescape\.com$/i, port: 43594 },
+	{ host: /^oldschool\d*\.runescape\.com$/i, port: 443 },
 ];
 
 /**

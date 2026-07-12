@@ -32,6 +32,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.Socket;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
@@ -60,6 +61,7 @@ public final class BrowserBoot
 {
 	private static volatile String phase = "idle";
 	private static Applet applet;
+	private static boolean gatewayInstalled;
 
 	private BrowserBoot()
 	{
@@ -71,6 +73,32 @@ public final class BrowserBoot
 	public static String phase()
 	{
 		return phase;
+	}
+
+	/**
+	 * Routes every {@code java.net.Socket} the client opens through the gateway
+	 * (see {@link WsSocketImpl}), the alternative to CheerpJ's Tailscale transport.
+	 * A no-op when {@code gatewayUrl} is empty (falls back to CheerpJ networking).
+	 *
+	 * @param gatewayUrl the gateway base WebSocket URL, or empty/null to skip
+	 */
+	public static void installGateway(String gatewayUrl)
+	{
+		if (gatewayUrl == null || gatewayUrl.isEmpty() || gatewayInstalled)
+		{
+			return;
+		}
+		try
+		{
+			Socket.setSocketImplFactory(new WsSocketImplFactory(gatewayUrl));
+			gatewayInstalled = true;
+		}
+		catch (Throwable t)
+		{
+			// If a factory is already set (e.g. by the runtime) it cannot be
+			// replaced; surface it rather than silently using another transport.
+			phase = "gateway-error:" + describe(t);
+		}
 	}
 
 	/**

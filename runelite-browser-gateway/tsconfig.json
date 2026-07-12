@@ -14,5 +14,7 @@
 		"skipLibCheck": true,
 		"noEmit": true
 	},
-	"include": ["src", "test", "build.mjs"]
+	"include": ["src", "test", "build.mjs"],
+	"comment": "worker.ts targets the Workers runtime (cloudflare:sockets); it is typechecked via tsconfig.worker.json.",
+	"exclude": ["src/worker.ts"]
 }

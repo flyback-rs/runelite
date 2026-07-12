@@ -71,9 +71,27 @@ connect handshake to a live world and expects a status byte back (read-only, no
 login), proving the relay against Jagex infrastructure. It is skipped by default
 because it requires outbound access to `:43594`.
 
+## Cloudflare Worker
+
+The same relay runs as a Cloudflare Worker ([`src/worker.ts`](src/worker.ts)),
+using the Workers [`connect()`](https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/)
+socket API instead of Node's `net` — so it needs no server to host and can open
+outbound TCP to `:43594` from Cloudflare's edge. It shares the same allowlist.
+
+```sh
+npm run typecheck        # also typechecks the Worker (tsconfig.worker.json)
+npm run dev:worker       # wrangler dev  (local)
+npm run deploy:worker    # wrangler deploy
+```
+
+Config is in [`wrangler.toml`](wrangler.toml); override the allowlist with a
+`GATEWAY_ALLOW` var. The client points at it with
+`?gateway=wss://<your-worker>.workers.dev` (see the CheerpJ experiment README).
+
 ## Deployment note
 
 The gateway needs outbound TCP to the game port (`43594`), which many sandboxes
-and CI runners block. Deploy it where that egress is permitted (e.g. a small VPS
-or container) and serve the client from a cross-origin-isolated origin (COOP +
-COEP) so `SharedArrayBuffer` is available.
+and CI runners block. Deploy it where that egress is permitted — a small VPS or
+container for the Node server, or the Worker above (Cloudflare allows outbound
+TCP except to its own IP ranges and port 25). Serve the client from a
+cross-origin-isolated origin (COOP + COEP) so `SharedArrayBuffer` is available.

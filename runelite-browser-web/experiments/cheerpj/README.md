@@ -22,32 +22,51 @@ node fetch-assets.mjs              # add --injected for RuneLite's injected clie
 node serve.mjs                     # http://localhost:8095
 ```
 
-What you should see without any networking setup: CheerpJ initialises (Java 8
-runtime), the boot shim instantiates the `client` applet with the `jav_config`
-parameters and calls `init()`/`start()`, and the client draws its loading
-screen — then reports a JS5 connection error, because browsers cannot open the
-raw TCP socket to `<world>:43594`. That already proves the whole class-loading
-and AWT render path.
+Without a gateway running, CheerpJ initialises (Java 8 runtime), the boot shim
+instantiates the `client` applet with the `jav_config` parameters and calls
+`init()`/`start()`, and the client draws its loading screen — then reports a JS5
+connection error, because it can't reach `<world>:43594`. That already proves
+the whole class-loading and AWT render path.
 
 ## Networking (getting past the loading screen)
 
-CheerpJ tunnels JVM `Socket`s over **Tailscale**. To let the client reach
-`oldschool<N>.runescape.com:43594` you need a tailnet whose exit node (or subnet
-router) can reach the internet, then:
+The default and recommended transport is the project's **own gateway**, not
+Tailscale. We install a custom `java.net.Socket` implementation
+([`WsSocketImpl`](../../../runelite-browser-cheerpj/src/main/java/net/runelite/browser/cheerpj/WsSocketImpl.java))
+whose bytes cross into JavaScript through CheerpJ `natives`
+([`socket-natives.js`](socket-natives.js)) and out over a WebSocket to
+[`runelite-browser-gateway`](../../../runelite-browser-gateway/), which relays
+them to `<world>:43594`. No Tailscale, no VPN.
 
-- `http://localhost:8095/?tsKey=<tailscale-auth-key>` — pre-authenticated key
-  ([create one](https://login.tailscale.com/admin/settings/keys)), or
-- `http://localhost:8095/?ts=interactive` — opens the Tailscale login UI.
+Run the gateway (either target), then open the page:
 
-The page logs the assigned Tailscale IP when the tunnel is up. With networking
-up, the client downloads the cache over JS5 (persisted in IndexedDB via the
-CheerpJ virtual filesystem, so later boots start warm) and reaches the title
-screen. Logging in requires a Jagex account exactly as on desktop.
+```sh
+# Local Node gateway (from runelite-browser-gateway/)
+node src/serve.js            # or: npm run build && npm start  → ws://localhost:8090
 
-The project's own WSS↔TCP relay (`runelite-browser-gateway`) is the networking
-path for the WasmGC engine; pointing CheerpJ's socket layer at it instead of
-Tailscale is future work (CheerpJ does not currently expose a socket-transport
-hook).
+# ...or deploy the Cloudflare Worker and use its URL
+npm run deploy:worker        # → wss://<your-worker>.workers.dev
+```
+
+- `http://localhost:8095/` — uses `ws://<page-host>:8090` by default.
+- `http://localhost:8095/?gateway=wss://<your-worker>.workers.dev` — any gateway.
+
+With the socket up, the client downloads the cache over JS5 (persisted in
+IndexedDB via the CheerpJ virtual filesystem, so later boots start warm) and
+reaches the title screen. Logging in requires a Jagex account exactly as on
+desktop.
+
+### Tailscale (fallback)
+
+CheerpJ's built-in transport is still available with `?gateway=none`, which
+re-enables the Tailscale options:
+
+- `?gateway=none&tsKey=<tailscale-auth-key>`
+  ([create a key](https://login.tailscale.com/admin/settings/keys)), or
+- `?gateway=none&ts=interactive` — opens the Tailscale login UI.
+
+The tailnet needs an exit node / subnet router that can reach the internet; the
+page logs the assigned Tailscale IP when the tunnel is up.
 
 ## Query parameters
 

@@ -84,21 +84,34 @@ the `DrawCallbacks` path avoids the full-frame copy entirely.
 The client opens a raw `java.net.Socket` to `<world>:43594` for the game and JS5
 protocols. In the browser that socket must be tunnelled. Two options:
 
-- **CheerpJ built-in networking.** CheerpJ tunnels JVM sockets over WebSockets
-  (its default uses a Tailscale control plane). This works without touching the
-  client but ties deployment to CheerpJ's networking model.
-- **This project's gateway (preferred, shared with the WasmGC path).**
-  [`runelite-browser-gateway`](../runelite-browser-gateway/) is a blind WSS↔TCP
-  byte relay with a destination allowlist. Its wire protocol is raw TCP bytes over
-  a binary WebSocket at `/connect?host=&port=` — protocol-agnostic, so it carries
-  the game/JS5 stream verbatim exactly as it carries the WasmGC transport's bytes.
-  Pointing CheerpJ's socket layer at the gateway (rather than its default
-  transport) is the remaining wiring; the relay itself is already validated
-  (unit-tested round-trip, and a live JS5 handshake against a real world when
-  `:43594` egress is available).
+- **This project's gateway (default, shared with the WasmGC path).** Because
+  CheerpJ runs real bytecode, we install a custom `SocketImpl`
+  ([`WsSocketImpl`](../runelite-browser-cheerpj/src/main/java/net/runelite/browser/cheerpj/WsSocketImpl.java))
+  via `Socket.setSocketImplFactory`, so every `java.net.Socket` the client opens
+  is relayed. Its read/write/connect/close cross into JavaScript through CheerpJ
+  `natives` (`WsBridge` → [`socket-natives.js`](../runelite-browser-web/experiments/cheerpj/socket-natives.js)) —
+  a Java `byte[]` arrives on the JS side as an `Int8Array` over the same memory,
+  so reads fill the caller's buffer directly, and a native returning a `Promise`
+  suspends the calling Java thread, giving blocking-socket semantics. The JS side
+  opens a WebSocket to [`runelite-browser-gateway`](../runelite-browser-gateway/)
+  (a blind WSS↔TCP byte relay with a destination allowlist), which forwards the
+  stream to `<world>:43594`. The gateway runs as a local Node server or a
+  Cloudflare Worker (`connect()` from `cloudflare:sockets`). No VPN. DNS is done
+  by the gateway — `WsSocketImpl` relays the socket address's host string, so no
+  browser-side resolution is needed.
+- **CheerpJ built-in networking (fallback).** CheerpJ tunnels JVM sockets over
+  WebSockets using a Tailscale control plane; selectable with `?gateway=none`.
+  This works without the factory override but ties deployment to a tailnet.
 
-Either way the game port `43594` must be reachable from wherever the tunnel
-terminates.
+Either way the game port `43594` (or the `:443` fallback) must be reachable from
+wherever the tunnel terminates.
+
+One assumption worth calling out: `Socket.setSocketImplFactory` can only be set
+once per JVM, so if the CheerpJ runtime were to install its own factory ours
+would fail — `BrowserBoot.installGateway` surfaces that as a `gateway-error`
+phase rather than silently falling back. In practice CheerpJ patches the socket
+runtime at a lower level (not via a public factory), so the override installs
+cleanly; validating this end-to-end needs an environment with browser egress.
 
 ## Cache
 
@@ -118,24 +131,27 @@ obtain a license. This is a deployment concern, not a code one.
 
 Reachable and verified:
 
-- The CheerpJ 4.2 runtime is reachable (CDN returns the loader), and the client
+- The CheerpJ 4.3 runtime is reachable (CDN returns the loader), and the client
   jars are in hand (`injected-client.jar` + `runelite-api.jar`).
 - The interop seams for both hand-offs exist and are the ones RuneLite itself
   uses (`BufferProvider.getPixels`, `setDrawCallbacks`, `getCanvas`).
-- The gateway carries arbitrary TCP bytes and is validated end-to-end.
+- The gateway carries arbitrary TCP bytes and is validated end-to-end (Node and
+  Cloudflare Worker targets), and the CheerpJ socket relay that feeds it — the
+  custom `SocketImpl` + `natives` bridge — is built and compiles.
 
 The boot is fully wired: the shim jar builds, the asset fetcher pulls the
 gamepack + jav_config, and the page drives the applet lifecycle exactly as
 RuneLite's `ClientLoader` does (both vanilla and injected modes). What each
 environment can demonstrate:
 
-- **Without socket networking** (any machine): CheerpJ initialises, the client
+- **Without a gateway running** (any machine): CheerpJ initialises, the client
   applet instantiates and starts, and it draws its loading screen before
   reporting a JS5 connection error — proving class-loading and the AWT render
   path end to end.
-- **With Tailscale networking** (`?tsKey=`, exit node reaching the internet):
-  the JS5 socket to `<world>:43594` works, the cache downloads (persisted in
-  IndexedDB), and the title screen appears. Logging in from there requires a
+- **With the gateway** (Node server or Cloudflare Worker, default transport):
+  the client's sockets are relayed to `<world>:43594`, the cache downloads
+  (persisted in IndexedDB), and the title screen appears. Tailscale
+  (`?gateway=none&tsKey=`) is the fallback. Logging in from there requires a
   Jagex account, as on desktop.
 - **In the CI sandbox** neither is demonstrable — headless browser egress to
   the CheerpJ CDN is reset and raw `:43594` egress is blocked. These are

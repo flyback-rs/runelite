@@ -1,0 +1,8 @@
+name = "runelite-browser-gateway"
+main = "src/worker.ts"
+compatibility_date = "2026-06-01"
+
+# Optional: restrict which destinations the relay may reach (defaults to any
+# OSRS world on :43594 and :443). Same syntax as the GATEWAY_ALLOW env var.
+# [vars]
+# GATEWAY_ALLOW = "oldschool*.runescape.com:43594,oldschool*.runescape.com:443"

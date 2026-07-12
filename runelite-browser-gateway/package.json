@@ -8,18 +8,21 @@
 		"node": ">=22"
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
 		"lint": "oxlint",
 		"format": "oxfmt src test",
 		"format:check": "oxfmt --check src test",
 		"build": "node build.mjs",
 		"start": "node dist/serve.js",
-		"test": "vitest run"
+		"test": "vitest run",
+		"deploy:worker": "npx wrangler deploy",
+		"dev:worker": "npx wrangler dev"
 	},
 	"dependencies": {
 		"ws": "^8.21.0"
 	},
 	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20260712.1",
 		"@types/node": "^24.0.0",
 		"@types/ws": "^8.18.1",
 		"esbuild": "^0.28.1",

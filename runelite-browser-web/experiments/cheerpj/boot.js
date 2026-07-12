@@ -8,11 +8,13 @@
 // parameters. See ../../../docs/cheerpj-integration.md.
 //
 // Networking: the client opens raw TCP sockets to <world>:43594 (JS5 + game).
-// CheerpJ tunnels JVM sockets over Tailscale — pass ?tsKey=<auth-key> (needs a
-// tailnet with an exit node / subnet router that can reach the internet), or
-// ?ts=interactive to log in via the Tailscale UI. Without networking the client
-// boots to its loading screen and then reports a JS5 connection error — that
-// still proves the whole render path.
+// The default transport is the project's own gateway — a custom java.net.Socket
+// implementation (WsSocketImpl) relays bytes over a WebSocket to
+// runelite-browser-gateway (local Node, or a Cloudflare Worker). Point it with
+// ?gateway=ws://host:port (default ws://<page-host>:8090), or ?gateway=none to
+// fall back to CheerpJ's built-in Tailscale transport (?tsKey=/?ts=interactive).
+// Without any working transport the client boots to its loading screen and then
+// reports a JS5 connection error — that still proves the whole render path.
 //
 // Status is published on window.__cheerpj for a headless driver.
 
@@ -45,24 +47,38 @@ async function loadConfig() {
 	return response.json();
 }
 
+// The gateway base URL, or "" to use CheerpJ's Tailscale transport instead.
+function gatewayUrl(query) {
+	const value = query.get("gateway");
+	if (value === "none") {
+		return "";
+	}
+	return value ?? `ws://${location.hostname}:8090`;
+}
+
 function initOptions(query) {
 	const options = {
 		version: 8,
 		status: "splash",
 		javaProperties: ["user.home=/files", "jagex.disableBouncyCastle=true"],
-		tailscaleIpCb: (ip) => {
+		// Socket relay natives (WsBridge): active only once installGateway() runs.
+		natives: window.__socketNatives,
+	};
+	// Tailscale is the fallback transport when ?gateway=none.
+	if (!gatewayUrl(query)) {
+		options.tailscaleIpCb = (ip) => {
 			status.tailscaleIp = ip;
 			log("tailscale ip: " + ip);
-		},
-	};
-	const tsKey = query.get("tsKey");
-	if (tsKey) {
-		options.tailscaleAuthKey = tsKey;
-	} else if (query.get("ts") === "interactive") {
-		options.tailscaleLoginUrlCb = (url) => {
-			log("tailscale login required: " + url);
-			window.open(url, "_blank");
 		};
+		const tsKey = query.get("tsKey");
+		if (tsKey) {
+			options.tailscaleAuthKey = tsKey;
+		} else if (query.get("ts") === "interactive") {
+			options.tailscaleLoginUrlCb = (url) => {
+				log("tailscale login required: " + url);
+				window.open(url, "_blank");
+			};
+		}
 	}
 	return options;
 }
@@ -94,6 +110,15 @@ async function boot() {
 		log("loading boot shim…");
 		const lib = await cheerpjRunLibrary("/app/lib/cheerpj-boot.jar");
 		const BrowserBoot = await lib.net.runelite.browser.cheerpj.BrowserBoot;
+
+		// Route java.net.Socket through the gateway (unless ?gateway=none).
+		const gateway = gatewayUrl(query);
+		if (gateway) {
+			log("networking via gateway: " + gateway);
+			await BrowserBoot.installGateway(gateway);
+		} else {
+			log("networking via CheerpJ Tailscale");
+		}
 
 		// Surface the shim's progress while the client starts up.
 		const poll = setInterval(async () => {
