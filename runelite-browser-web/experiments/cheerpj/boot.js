@@ -39,6 +39,18 @@ function log(message) {
 	console.log("[boot]", message);
 }
 
+// Logs elapsed seconds every 5s while `promise` is pending, so a slow runtime
+// download is visibly distinguishable from a genuine hang.
+async function heartbeat(label, promise) {
+	const started = Date.now();
+	const timer = setInterval(() => log(`${label}… ${Math.round((Date.now() - started) / 1000)}s`), 5000);
+	try {
+		return await promise;
+	} finally {
+		clearInterval(timer);
+	}
+}
+
 async function loadConfig() {
 	const response = await fetch("./lib/config.json");
 	if (!response.ok) {
@@ -59,11 +71,16 @@ function gatewayUrl(query) {
 function initOptions(query) {
 	const options = {
 		version: 8,
-		status: "splash",
+		// ?status=none removes CheerpJ's loading overlay (useful to see what is
+		// actually rendered underneath); default "default" shows progress text.
+		status: query.get("status") ?? "default",
 		javaProperties: ["user.home=/files", "jagex.disableBouncyCastle=true"],
 		// Socket relay natives (WsBridge): active only once installGateway() runs.
 		natives: window.__socketNatives,
 	};
+	if (query.get("debug") === "1") {
+		options.enableDebug = true;
+	}
 	// Tailscale is the fallback transport when ?gateway=none.
 	if (!gatewayUrl(query)) {
 		options.tailscaleIpCb = (ip) => {
@@ -101,14 +118,14 @@ async function boot() {
 			.join("\n");
 
 		log("cheerpjInit (java 8)…");
-		await cheerpjInit(initOptions(query));
+		await heartbeat("cheerpjInit", cheerpjInit(initOptions(query)));
 		status.runtimeReady = true;
 		log("runtime ready");
 
 		cheerpjCreateDisplay(-1, -1, document.getElementById("display"));
 
 		log("loading boot shim…");
-		const lib = await cheerpjRunLibrary("/app/lib/cheerpj-boot.jar");
+		const lib = await heartbeat("cheerpjRunLibrary", cheerpjRunLibrary("/app/lib/cheerpj-boot.jar"));
 		const BrowserBoot = await lib.net.runelite.browser.cheerpj.BrowserBoot;
 
 		// Route java.net.Socket through the gateway (unless ?gateway=none).
