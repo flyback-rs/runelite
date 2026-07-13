@@ -18,7 +18,7 @@ gradle -p runelite-browser-cheerpj jar
 node fetch-assets.mjs              # add --injected for RuneLite's injected client
                                    # add --world 39 to pin a specific world
 
-# 3) Serve with COOP/COEP and open it
+# 3) Serve (Range requests, no COOP/COEP — CheerpJ isolates itself) and open it
 node serve.mjs                     # http://localhost:8095
 ```
 
