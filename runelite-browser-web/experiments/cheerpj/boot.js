@@ -30,20 +30,69 @@ const status = {
 };
 window.__cheerpj = status;
 
+const els = {
+	overlay: document.getElementById("loading"),
+	stage: document.getElementById("stage"),
+	detail: document.getElementById("detail"),
+	elapsed: document.getElementById("elapsed"),
+	log: document.getElementById("log"),
+};
+
+// Friendly one-liners for the on-screen loading stage. Raw phase names still go
+// to the debug log and window.__cheerpj.
+const STAGE_TEXT = {
+	"cheerpjInit": ["Starting the Java runtime…", "First load downloads the runtime (~30–90s). It is cached for next time."],
+	"runtime ready": ["Java runtime ready", ""],
+	"cheerpjRunLibrary": ["Loading client support classes…", "First load downloads the JDK (AWT, reflection). Cached afterwards."],
+	"loading-jar": ["Loading the game client…", ""],
+	"instantiating": ["Starting the game client…", ""],
+	"applet-init": ["Initialising the client…", ""],
+	"initializing": ["Initialising the client…", ""],
+	"started": ["Client running", "Connecting to the game world…"],
+};
+
+function stage(name) {
+	const [title, detail] = STAGE_TEXT[name] ?? [name, els.detail ? els.detail.textContent : ""];
+	if (els.stage) els.stage.textContent = title;
+	if (els.detail && detail !== undefined) els.detail.textContent = detail;
+}
+
 function log(message) {
 	status.phase = message;
-	const el = document.getElementById("log");
-	if (el) {
-		el.textContent += message + "\n";
+	stage(message.replace(/…\s*\d+s$/, "")); // strip heartbeat suffix for the stage map
+	if (els.log) {
+		els.log.textContent += message + "\n";
+		els.log.scrollTop = els.log.scrollHeight;
 	}
 	console.log("[boot]", message);
 }
 
-// Logs elapsed seconds every 5s while `promise` is pending, so a slow runtime
-// download is visibly distinguishable from a genuine hang.
+let bootStarted = Date.now();
+setInterval(() => {
+	if (els.elapsed && !status.booted && !status.error) {
+		els.elapsed.textContent = Math.round((Date.now() - bootStarted) / 1000) + "s";
+	}
+}, 250);
+
+function finishOverlay(kind) {
+	if (!els.overlay) return;
+	if (kind === "error") {
+		els.overlay.classList.add("error");
+		if (els.stage) els.stage.textContent = "Boot failed";
+		if (els.detail) els.detail.textContent = status.error ?? "";
+	} else {
+		els.overlay.classList.add("hidden");
+	}
+}
+
+// Updates the on-screen stage every 5s while `promise` is pending, so a slow
+// first-load download is visibly distinguishable from a genuine hang.
 async function heartbeat(label, promise) {
 	const started = Date.now();
-	const timer = setInterval(() => log(`${label}… ${Math.round((Date.now() - started) / 1000)}s`), 5000);
+	stage(label);
+	const timer = setInterval(() => {
+		console.log(`[boot] ${label}… ${Math.round((Date.now() - started) / 1000)}s`);
+	}, 5000);
 	try {
 		return await promise;
 	} finally {
@@ -71,9 +120,9 @@ function gatewayUrl(query) {
 function initOptions(query) {
 	const options = {
 		version: 8,
-		// ?status=none removes CheerpJ's loading overlay (useful to see what is
-		// actually rendered underneath); default "default" shows progress text.
-		status: query.get("status") ?? "default",
+		// We render our own loading overlay, so CheerpJ's status reporting is off
+		// by default; ?status=default|splash re-enables CheerpJ's for debugging.
+		status: query.get("status") ?? "none",
 		javaProperties: ["user.home=/files", "jagex.disableBouncyCastle=true"],
 		// Socket relay natives (WsBridge): active only once installGateway() runs.
 		natives: window.__socketNatives,
@@ -166,10 +215,29 @@ async function boot() {
 		status.result = result;
 		status.booted = result === "ok";
 		log("boot result: " + result);
+		if (status.booted) {
+			// The applet has started; reveal the client (it shows its own loading
+			// bar / login while it downloads the cache over the gateway).
+			finishOverlay("hidden");
+		} else {
+			status.error = result;
+			finishOverlay("error");
+		}
 	} catch (error) {
 		status.error = error instanceof Error ? error.message : String(error);
 		log("error: " + status.error);
+		finishOverlay("error");
 	}
 }
+
+// The debug log is hidden by default; ?log=1 or the backtick key reveals it.
+if (new URLSearchParams(location.search).get("log") === "1") {
+	els.log?.classList.remove("hidden");
+}
+window.addEventListener("keydown", (event) => {
+	if (event.key === "`") {
+		els.log?.classList.toggle("hidden");
+	}
+});
 
 void boot();
