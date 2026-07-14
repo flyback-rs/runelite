@@ -27,10 +27,13 @@ package net.runelite.browser.cheerpj;
 import java.applet.Applet;
 import java.awt.BorderLayout;
 import java.awt.Frame;
+import java.awt.event.MouseEvent;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.net.Socket;
 import java.net.URL;
@@ -188,6 +191,7 @@ public final class BrowserBoot
 					}
 				});
 			clientClass.getMethod("setConfiguration", configurationType).invoke(client, configuration);
+			installNoOpCallbacks(loader, clientClass, client);
 
 			show((Applet) client, width, height);
 			phase = "initializing";
@@ -199,6 +203,68 @@ public final class BrowserBoot
 		{
 			phase = "error:" + describe(t);
 			return phase;
+		}
+	}
+
+	/**
+	 * Installs a no-op {@code net.runelite.api.hooks.Callbacks} into the injected
+	 * client so it does not NPE on its first render. RuneLite normally populates
+	 * this field via Guice member injection; here we build a stub proxy (mouse/key
+	 * hooks pass their event through, {@code draw} returns true, everything else is
+	 * a no-op) and set the client's Callbacks field reflectively, located by type
+	 * so the obfuscated field name does not matter. Best effort: a failure is
+	 * logged as a phase note but does not abort the boot.
+	 */
+	private static void installNoOpCallbacks(URLClassLoader loader, Class<?> clientClass, Object client)
+	{
+		try
+		{
+			Class<?> callbacksType = loader.loadClass("net.runelite.api.hooks.Callbacks");
+			Object callbacks = Proxy.newProxyInstance(loader, new Class<?>[]{callbacksType},
+				new InvocationHandler()
+				{
+					@Override
+					public Object invoke(Object proxy, Method method, Object[] args)
+					{
+						Class<?> returnType = method.getReturnType();
+						if (MouseEvent.class.isAssignableFrom(returnType))
+						{
+							return args != null && args.length > 0 ? args[0] : null;
+						}
+						if (returnType == boolean.class)
+						{
+							// draw(Renderable, boolean) -> true (render everything);
+							// isRuneLiteClientOutdated() -> false.
+							return !"isRuneLiteClientOutdated".equals(method.getName());
+						}
+						switch (method.getName())
+						{
+							case "toString":
+								return "BrowserBoot.NoOpCallbacks";
+							case "hashCode":
+								return System.identityHashCode(proxy);
+							case "equals":
+								return proxy == args[0];
+							default:
+								return null;
+						}
+					}
+				});
+
+			for (Field field : clientClass.getDeclaredFields())
+			{
+				if (!Modifier.isStatic(field.getModifiers()) && field.getType() == callbacksType)
+				{
+					field.setAccessible(true);
+					field.set(client, callbacks);
+					return;
+				}
+			}
+			phase = "callbacks-warn:no Callbacks field found";
+		}
+		catch (Throwable t)
+		{
+			phase = "callbacks-warn:" + describe(t);
 		}
 	}
 

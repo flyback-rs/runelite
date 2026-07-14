@@ -28,6 +28,24 @@ instantiates the `client` applet with the `jav_config` parameters and calls
 connection error, because it can't reach `<world>:43594`. That already proves
 the whole class-loading and AWT render path.
 
+### Use `mode=injected` to reach the login screen
+
+The **vanilla** gamepack (`mode=vanilla`, the default) now shows *"The Legacy
+Java Client is no longer supported — use the Jagex Launcher or Steam"*: Jagex
+gates the raw applet behind their launcher. **RuneLite's injected client has that
+gate removed**, so it boots to the actual login screen. Use it:
+
+```sh
+node fetch-assets.mjs --injected        # downloads injected-client.jar + runelite-api.jar
+node serve.mjs
+# open http://localhost:8095/?mode=injected
+```
+
+The boot shim also installs a no-op RuneLite `Callbacks` into the injected client
+(which RuneLite normally supplies via dependency injection) so it renders without
+NPE-ing. Getting past the login screen still needs the gateway (below) for the
+game socket, and a Jagex account.
+
 ## Networking (getting past the loading screen)
 
 The default and recommended transport is the project's **own gateway**, not
