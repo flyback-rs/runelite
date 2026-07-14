@@ -134,8 +134,6 @@ function initOptions(query) {
 		// by default; ?status=default|splash re-enables CheerpJ's for debugging.
 		status: query.get("status") ?? "none",
 		javaProperties: ["user.home=/files", "jagex.disableBouncyCastle=true"],
-		// Socket relay natives (WsBridge): active only once installGateway() runs.
-		natives: window.__socketNatives,
 	};
 	if (query.get("debug") === "1") {
 		options.enableDebug = true;
@@ -187,11 +185,13 @@ async function boot() {
 		const lib = await heartbeat("cheerpjRunLibrary", cheerpjRunLibrary("/app/lib/cheerpj-boot.jar"));
 		const BrowserBoot = await lib.net.runelite.browser.cheerpj.BrowserBoot;
 
-		// Route java.net.Socket through the gateway (unless ?gateway=none).
+		// Route CheerpJ's TCP sockets through the gateway (unless ?gateway=none).
+		// This overrides CheerpJ's own socket layer (cheerpj-net.js); the Java
+		// SocketImpl factory is ignored by CheerpJ, so it is no longer used.
 		const gateway = gatewayUrl(query);
 		if (gateway) {
 			log("networking via gateway: " + gateway);
-			await BrowserBoot.installGateway(gateway);
+			self.__installCheerpjNet(gateway);
 		} else {
 			log("networking via CheerpJ Tailscale");
 		}
