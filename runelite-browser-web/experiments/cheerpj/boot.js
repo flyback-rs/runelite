@@ -1,8 +1,8 @@
 // Boots the real Old School RuneScape client under CheerpJ.
 //
 // Flow: fetch lib/config.json (written by fetch-assets.mjs) -> cheerpjInit
-// (Java 8; applets are supported on the Java 8 runtime only) -> create the AWT
-// display -> load lib/cheerpj-boot.jar with cheerpjRunLibrary -> call
+// (Java 8 for the vanilla applet, Java 11 for RuneLite's injected client) ->
+// create the AWT display -> load lib/cheerpj-boot.jar with cheerpjRunLibrary -> call
 // BrowserBoot.bootVanilla (the unmodified gamepack as an applet) or
 // BrowserBoot.bootInjected (RuneLite's injected client) with the jav_config
 // parameters. See ../../../docs/cheerpj-integration.md.
@@ -108,6 +108,16 @@ async function loadConfig() {
 	return response.json();
 }
 
+function bootMode(query) {
+	return query.get("mode") === "injected" ? "injected" : "vanilla";
+}
+
+// CheerpJ runtime version: the vanilla gamepack is applet-era Java 8; RuneLite's
+// injected client is Java 11 bytecode. Override with ?jver=N.
+function javaVersion(query) {
+	return Number(query.get("jver")) || (bootMode(query) === "injected" ? 11 : 8);
+}
+
 // The gateway base URL, or "" to use CheerpJ's Tailscale transport instead.
 function gatewayUrl(query) {
 	const value = query.get("gateway");
@@ -119,7 +129,7 @@ function gatewayUrl(query) {
 
 function initOptions(query) {
 	const options = {
-		version: 8,
+		version: javaVersion(query),
 		// We render our own loading overlay, so CheerpJ's status reporting is off
 		// by default; ?status=default|splash re-enables CheerpJ's for debugging.
 		status: query.get("status") ?? "none",
@@ -166,7 +176,7 @@ async function boot() {
 			.map(([key, value]) => `${key}\t${value}`)
 			.join("\n");
 
-		log("cheerpjInit (java 8)…");
+		log(`cheerpjInit (java ${javaVersion(query)})…`);
 		await heartbeat("cheerpjInit", cheerpjInit(initOptions(query)));
 		status.runtimeReady = true;
 		log("runtime ready");
@@ -198,7 +208,7 @@ async function boot() {
 			}
 		}, 2000);
 
-		const mode = query.get("mode") === "injected" ? "injected" : "vanilla";
+		const mode = bootMode(query);
 		log(`booting ${mode} client ${width}x${height} from ${codebase}`);
 		const result =
 			mode === "injected"

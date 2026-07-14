@@ -22,7 +22,8 @@ node fetch-assets.mjs              # add --injected for RuneLite's injected clie
 node serve.mjs                     # http://localhost:8095
 ```
 
-Without a gateway running, CheerpJ initialises (Java 8 runtime), the boot shim
+Without a gateway running, CheerpJ initialises (Java 8 for the vanilla applet,
+Java 11 for the injected client), the boot shim
 instantiates the `client` applet with the `jav_config` parameters and calls
 `init()`/`start()`, and the client draws its loading screen — then reports a JS5
 connection error, because it can't reach `<world>:43594`. That already proves
