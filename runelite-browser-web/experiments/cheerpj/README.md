@@ -37,10 +37,16 @@ gates the raw applet behind their launcher. **RuneLite's injected client has tha
 gate removed**, so it boots to the actual login screen. Use it:
 
 ```sh
-node fetch-assets.mjs --injected        # downloads injected-client.jar + runelite-api.jar
+node fetch-assets.mjs --injected        # injected-client + runelite-api + runtime libs
 node serve.mjs
 # open http://localhost:8095/?mode=injected
 ```
+
+`--injected` also downloads RuneLite's runtime libraries the injected client
+needs (SLF4J, Guava, org.json — pinned to RuneLite's versions; BouncyCastle is
+already bundled) from Maven Central, and writes the resulting classpath into
+`lib/config.json`. It runs under CheerpJ's **Java 11** runtime (the injected
+client is Java 11 bytecode); the vanilla applet uses Java 8.
 
 The boot shim also installs a no-op RuneLite `Callbacks` into the injected client
 (which RuneLite normally supplies via dependency injection) so it renders without

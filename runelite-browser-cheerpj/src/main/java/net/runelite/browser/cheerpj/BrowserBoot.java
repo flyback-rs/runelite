@@ -140,23 +140,25 @@ public final class BrowserBoot
 	}
 
 	/**
-	 * Boots RuneLite's injected client ({@code injected-client.jar} +
-	 * {@code runelite-api.jar}).
+	 * Boots RuneLite's injected client from a full classpath. Besides
+	 * {@code injected-client.jar} + {@code runelite-api.jar}, the injected client
+	 * needs RuneLite's runtime libraries (SLF4J, Guava, org.json — BouncyCastle is
+	 * already bundled); {@code fetch-assets.mjs --injected} downloads them and
+	 * writes the classpath, so it stays data-driven rather than hard-coded here.
 	 *
-	 * @param clientJar virtual-filesystem path of injected-client.jar
-	 * @param apiJar virtual-filesystem path of runelite-api.jar
+	 * @param classpath colon-separated virtual-filesystem jar paths
 	 * @param codebase the jav_config codebase URL
 	 * @param params applet parameters, {@code key\tvalue} pairs separated by {@code \n}
 	 * @param width initial applet width
 	 * @param height initial applet height
 	 * @return "ok" or "error:..." (also reflected in {@link #phase()})
 	 */
-	public static String bootInjected(String clientJar, String apiJar, String codebase, String params, int width, int height)
+	public static String bootInjected(String classpath, String codebase, String params, int width, int height)
 	{
 		try
 		{
 			phase = "loading-jar";
-			URLClassLoader loader = classLoader(clientJar, apiJar);
+			URLClassLoader loader = classLoader(classpath.split(":"));
 			Class<?> clientClass = loader.loadClass("client");
 			phase = "instantiating";
 			Object client = clientClass.getDeclaredConstructor().newInstance();

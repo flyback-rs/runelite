@@ -22,6 +22,18 @@ const JAV_CONFIG_URL = world
 	? `https://oldschool${world}.runescape.com/jav_config.ws`
 	: "https://oldschool.runescape.com/jav_config.ws";
 const RUNELITE_REPO = "https://repo.runelite.net/net/runelite";
+const MAVEN = "https://repo1.maven.org/maven2";
+
+// The injected client is compiled against RuneLite's runtime classpath. It
+// bundles BouncyCastle already, but needs these from Maven Central (versions
+// pinned to RuneLite's libs.versions.toml). slf4j-simple is a logging binding so
+// the client's own logs surface in the browser console — handy for debugging.
+const INJECTED_DEPS = [
+	{ path: "org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar", file: "slf4j-api-1.7.25.jar" },
+	{ path: "org/slf4j/slf4j-simple/1.7.25/slf4j-simple-1.7.25.jar", file: "slf4j-simple-1.7.25.jar" },
+	{ path: "com/google/guava/guava/23.2-jre/guava-23.2-jre.jar", file: "guava-23.2-jre.jar" },
+	{ path: "org/json/json/20231013/json-20231013.jar", file: "json-20231013.jar" },
+];
 
 async function text(url) {
 	const response = await fetch(url, { redirect: "follow" });
@@ -84,6 +96,7 @@ if (!loader["codebase"] || !loader["initial_jar"]) {
 console.log(`gamepack: ${loader["initial_jar"]} from ${loader["codebase"]}`);
 await download(new URL(loader["initial_jar"], loader["codebase"]).href, resolve(lib, "gamepack.jar"));
 
+const injectedClasspath = [];
 if (injected) {
 	const clientVersion = await latestRuneLiteVersion("injected-client");
 	const apiVersion = await latestRuneLiteVersion("runelite-api");
@@ -96,6 +109,12 @@ if (injected) {
 		`${RUNELITE_REPO}/runelite-api/${apiVersion}/runelite-api-${apiVersion}.jar`,
 		resolve(lib, "runelite-api.jar"),
 	);
+	injectedClasspath.push("/app/lib/injected-client.jar", "/app/lib/runelite-api.jar");
+
+	for (const dep of INJECTED_DEPS) {
+		await download(`${MAVEN}/${dep.path}`, resolve(lib, dep.file));
+		injectedClasspath.push(`/app/lib/${dep.file}`);
+	}
 }
 
 if (!existsSync(bootJar)) {
@@ -114,6 +133,7 @@ writeFileSync(
 			initialClass: loader["initial_class"] ?? "client.class",
 			width: Number(params["applet_minwidth"] ?? loader["applet_minwidth"] ?? 765),
 			height: Number(params["applet_minheight"] ?? loader["applet_minheight"] ?? 503),
+			injectedClasspath,
 			params,
 		},
 		null,

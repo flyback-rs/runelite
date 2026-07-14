@@ -210,17 +210,15 @@ async function boot() {
 
 		const mode = bootMode(query);
 		log(`booting ${mode} client ${width}x${height} from ${codebase}`);
-		const result =
-			mode === "injected"
-				? await BrowserBoot.bootInjected(
-						"/app/lib/injected-client.jar",
-						"/app/lib/runelite-api.jar",
-						codebase,
-						params,
-						width,
-						height,
-					)
-				: await BrowserBoot.bootVanilla("/app/lib/gamepack.jar", codebase, params, width, height);
+		let result;
+		if (mode === "injected") {
+			const classpath = (
+				config.injectedClasspath ?? ["/app/lib/injected-client.jar", "/app/lib/runelite-api.jar"]
+			).join(":");
+			result = await BrowserBoot.bootInjected(classpath, codebase, params, width, height);
+		} else {
+			result = await BrowserBoot.bootVanilla("/app/lib/gamepack.jar", codebase, params, width, height);
+		}
 		clearInterval(poll);
 		status.result = result;
 		status.booted = result === "ok";
