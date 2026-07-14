@@ -26,6 +26,7 @@ package net.runelite.browser.cheerpj;
 
 import java.applet.Applet;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Frame;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -63,7 +64,7 @@ import java.util.Map;
 public final class BrowserBoot
 {
 	private static volatile String phase = "idle";
-	private static Applet applet;
+	private static Component root;
 	private static boolean gatewayInstalled;
 
 	private BrowserBoot()
@@ -134,7 +135,7 @@ public final class BrowserBoot
 		}
 		catch (Throwable t)
 		{
-			phase = "error:" + describe(t);
+			phase = "error@" + phase + ":" + describe(t);
 			return phase;
 		}
 	}
@@ -192,10 +193,16 @@ public final class BrowserBoot
 						}
 					}
 				});
+			phase = "configuring";
 			clientClass.getMethod("setConfiguration", configurationType).invoke(client, configuration);
+			phase = "callbacks";
 			installNoOpCallbacks(loader, clientClass, client);
 
-			show((Applet) client, width, height);
+			// RuneLite's injected client is a java.awt.Panel (a GameEngine/Client),
+			// not an Applet — it is displayed as a Component and driven via
+			// initialize(), not the applet lifecycle.
+			phase = "showing";
+			show((Component) client, width, height);
 			phase = "initializing";
 			clientClass.getMethod("initialize").invoke(client);
 			phase = "started";
@@ -203,7 +210,7 @@ public final class BrowserBoot
 		}
 		catch (Throwable t)
 		{
-			phase = "error:" + describe(t);
+			phase = "error@" + phase + ":" + describe(t);
 			return phase;
 		}
 	}
@@ -280,9 +287,9 @@ public final class BrowserBoot
 		return new URLClassLoader(urls, BrowserBoot.class.getClassLoader());
 	}
 
-	private static void show(Applet client, int width, int height)
+	private static void show(Component client, int width, int height)
 	{
-		applet = client;
+		root = client;
 		client.setSize(width, height);
 		Frame frame = new Frame("Old School RuneScape");
 		frame.setLayout(new BorderLayout());
