@@ -96,6 +96,8 @@ final class WsSocketImpl extends SocketImpl
 
 	private void open(String host, int port) throws IOException
 	{
+		// Diagnostic: proves the client's java.net.Socket routed through this impl.
+		System.out.println("[WsSocketImpl] connect " + host + ":" + port);
 		this.address = InetAddress.getByName("0.0.0.0");
 		this.port = port;
 		handle = WsBridge.nOpen(gatewayUrl, host, port);

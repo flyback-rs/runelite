@@ -96,12 +96,14 @@ public final class BrowserBoot
 		{
 			Socket.setSocketImplFactory(new WsSocketImplFactory(gatewayUrl));
 			gatewayInstalled = true;
+			System.out.println("[BrowserBoot] socket factory installed; sockets relay to " + gatewayUrl);
 		}
 		catch (Throwable t)
 		{
 			// If a factory is already set (e.g. by the runtime) it cannot be
 			// replaced; surface it rather than silently using another transport.
 			phase = "gateway-error:" + describe(t);
+			System.out.println("[BrowserBoot] socket factory NOT installed: " + describe(t));
 		}
 	}
 
