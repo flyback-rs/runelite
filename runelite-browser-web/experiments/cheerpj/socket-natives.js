@@ -27,6 +27,9 @@ function wsWake(st) {
 async function Java_net_runelite_browser_cheerpj_WsBridge_nOpen(lib, gatewayUrl, host, port) {
 	const base = String(gatewayUrl).replace(/\/+$/, "");
 	const url = `${base}/connect?host=${encodeURIComponent(host)}&port=${port}`;
+	// Diagnostic: if this line never prints, CheerpJ isn't routing the client's
+	// java.net.Socket through our SocketImpl factory (the one untested assumption).
+	console.log(`[ws] nOpen ${host}:${port} via ${url}`);
 	return new Promise((resolve) => {
 		let settled = false;
 		const st = wsState();
@@ -38,6 +41,7 @@ async function Java_net_runelite_browser_cheerpj_WsBridge_nOpen(lib, gatewayUrl,
 			settled = true;
 			const handle = nextWsHandle++;
 			wsHandles.set(handle, st);
+			console.log(`[ws] open ${host}:${port} (handle ${handle})`);
 			resolve(handle);
 		};
 		ws.onmessage = (event) => {
@@ -60,6 +64,7 @@ async function Java_net_runelite_browser_cheerpj_WsBridge_nOpen(lib, gatewayUrl,
 			st.closed = true;
 			if (!settled) {
 				settled = true;
+				console.warn(`[ws] failed to reach gateway for ${host}:${port} — is it running at ${base}?`);
 				resolve(-1);
 			}
 			wsWake(st);
