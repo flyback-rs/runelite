@@ -1,0 +1,39 @@
+{
+	// NOTE: run Gradle on JDK 11–24 (this Gradle version does not support newer
+	// JDKs; the code itself targets Java 11). If your default JDK is newer, set
+	// "java.import.gradle.java.home" in your *user* settings — it is a
+	// machine-specific path, so it is deliberately not set here.
+
+	// Re-import Gradle changes without prompting on every build-file edit.
+	"java.configuration.updateBuildConfiguration": "automatic",
+
+	// The repo's checkstyle rules; the version pin matches the build's
+	// toolVersion (common.settings.gradle.kts) so the old config parses.
+	"java.checkstyle.configuration": "${workspaceFolder}/config/checkstyle/checkstyle.xml",
+	"java.checkstyle.version": "8.3",
+
+	// checkstyle requires tab indentation; VS Code defaults to spaces.
+	"[java]": {
+		"editor.insertSpaces": false,
+		"editor.detectIndentation": false
+	},
+	// The browser packages format with oxfmt (useTabs).
+	"[typescript]": {
+		"editor.insertSpaces": false,
+		"editor.detectIndentation": false
+	},
+	"[javascript]": {
+		"editor.insertSpaces": false,
+		"editor.detectIndentation": false
+	},
+
+	// Keep Gradle/npm outputs out of search results and the file watcher.
+	"search.exclude": {
+		"**/build": true,
+		"**/dist": true
+	},
+	"files.watcherExclude": {
+		"**/build/**": true,
+		"**/dist/**": true
+	}
+}

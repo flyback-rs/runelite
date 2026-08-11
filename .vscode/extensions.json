@@ -1,0 +1,19 @@
+{
+	// Curated for this repo. Java: redhat.java (Lombok support is built in, no
+	// separate extension needed) + Microsoft's debugger/test/dependency/Gradle
+	// extensions; checkstyle enforces the repo style (config/checkstyle/).
+	// Web (runelite-browser-*): oxc (oxlint/oxfmt), Vitest and Playwright
+	// official extensions; wgsl-analyzer for the WebGPU shaders.
+	"recommendations": [
+		"redhat.java",
+		"vscjava.vscode-java-debug",
+		"vscjava.vscode-java-test",
+		"vscjava.vscode-java-dependency",
+		"vscjava.vscode-gradle",
+		"shengchen.vscode-checkstyle",
+		"oxc.oxc-vscode",
+		"vitest.explorer",
+		"ms-playwright.playwright",
+		"wgsl-analyzer.wgsl-analyzer"
+	]
+}

@@ -33,7 +33,11 @@ bin/
 /.nb-gradle/
 
 ### VS Code ###
-.vscode/
+# Ignore everything except the shared, curated workspace config.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
 
 ### Mac OS ###
 .DS_Store

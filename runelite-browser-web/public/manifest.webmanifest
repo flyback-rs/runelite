@@ -1,0 +1,9 @@
+{
+	"name": "RuneLite Browser Engine",
+	"short_name": "RuneLite",
+	"start_url": "./",
+	"display": "standalone",
+	"background_color": "#16161a",
+	"theme_color": "#16161a",
+	"icons": []
+}

@@ -1,0 +1,3 @@
+# Fetched Jagex/RuneLite jars and generated config are never committed;
+# populate with `node fetch-assets.mjs`.
+lib/

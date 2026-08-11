@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>RuneLite Browser — real client (CheerpJ)</title>
+		<style>
+			:root {
+				color-scheme: dark;
+			}
+			html,
+			body {
+				margin: 0;
+				height: 100%;
+				background: #0e0d0b;
+				color: #e8e2d4;
+				font-family: system-ui, sans-serif;
+			}
+			#display {
+				width: 100%;
+				height: 100vh;
+			}
+
+			/* Branded loading overlay shown until the client takes over the display. */
+			#loading {
+				position: fixed;
+				inset: 0;
+				z-index: 2147483000;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 22px;
+				background:
+					radial-gradient(1200px 600px at 50% 25%, #221d15 0%, #0e0d0b 60%),
+					#0e0d0b;
+				transition: opacity 0.5s ease;
+			}
+			#loading.hidden {
+				opacity: 0;
+				pointer-events: none;
+			}
+			.brand {
+				font-family: Georgia, "Times New Roman", serif;
+				font-size: 42px;
+				letter-spacing: 0.04em;
+				color: #f0c675;
+				text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+			}
+			.brand small {
+				display: block;
+				margin-top: 4px;
+				font-size: 13px;
+				letter-spacing: 0.28em;
+				text-transform: uppercase;
+				color: #8a7f68;
+			}
+			.ring {
+				width: 46px;
+				height: 46px;
+				border-radius: 50%;
+				border: 4px solid rgba(240, 198, 117, 0.18);
+				border-top-color: #f0c675;
+				animation: spin 0.9s linear infinite;
+			}
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+			#stage {
+				font-size: 16px;
+				font-weight: 600;
+				color: #e8e2d4;
+			}
+			#detail {
+				max-width: 460px;
+				text-align: center;
+				font-size: 13px;
+				line-height: 1.5;
+				color: #a99f88;
+			}
+			#elapsed {
+				font: 12px ui-monospace, monospace;
+				color: #6f6656;
+			}
+			#loading.error .ring {
+				animation: none;
+				border-top-color: #d66;
+				border-color: rgba(221, 102, 102, 0.25);
+			}
+			#loading.error #stage {
+				color: #ff9b9b;
+			}
+
+			/* Debug log: hidden unless ?log=1 or backtick toggles it. */
+			#log {
+				position: fixed;
+				top: 0;
+				left: 0;
+				right: 0;
+				max-height: 45vh;
+				overflow: auto;
+				margin: 0;
+				padding: 8px 12px;
+				white-space: pre-wrap;
+				background: rgba(0, 0, 0, 0.85);
+				color: #7cfc7c;
+				font: 12px/1.45 ui-monospace, monospace;
+				z-index: 2147483647;
+				pointer-events: none;
+			}
+			#log.hidden {
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- CheerpJ renders the client's AWT frame into this element. -->
+		<div id="display"></div>
+
+		<div id="loading">
+			<div class="brand">RuneLite<small>Browser Client</small></div>
+			<div class="ring"></div>
+			<div id="stage">Starting…</div>
+			<div id="detail"></div>
+			<div id="elapsed"></div>
+		</div>
+
+		<pre id="log" class="hidden"></pre>
+
+		<script src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
+		<script src="./cheerpj-net.js"></script>
+		<script src="./boot.js"></script>
+	</body>
+</html>

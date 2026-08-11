@@ -1,0 +1,15 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			// The desktop client. Add "--developer-mode" (and "--debug") to args
+			// for the developer tools.
+			"type": "java",
+			"name": "RuneLite (desktop client)",
+			"request": "launch",
+			"mainClass": "net.runelite.client.RuneLite",
+			"projectName": "client",
+			"vmArgs": "-ea"
+		}
+	]
+}
