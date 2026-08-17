@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,46 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser;
 
-rootProject.name = "runelite"
+import org.teavm.jso.JSExport;
+import org.teavm.jso.typedarrays.Int8Array;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
+/**
+ * The WasmGC module's single entry facade. TeaVM only emits {@code @JSExport}
+ * bindings for the configured main class, so every JavaScript-callable function
+ * lives here and delegates to the real implementation.
+ *
+ * <p>{@link #main} runs part 1's browser bootstrap demo (kept so the standalone
+ * page still works); the {@code game*} exports are the game worker's API and run
+ * without {@link #main} ever being called.</p>
+ */
+public final class WasmEntry
+{
+	private WasmEntry()
+	{
+	}
 
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+	public static void main(String[] args)
+	{
+		BrowserBootstrap.main(args);
+	}
+
+	@JSExport
+	public static void gameInit(int width, int height)
+	{
+		GameWorker.init(width, height);
+	}
+
+	@JSExport
+	public static int gameFrameCapacity()
+	{
+		return GameWorker.frameCapacity();
+	}
+
+	@JSExport
+	public static int gameProduceFrame(Int8Array target, int frameIndex)
+	{
+		return GameWorker.produceFrame(target, frameIndex);
+	}
+}

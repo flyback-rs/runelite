@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,43 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
+public class PanelModelTest
+{
+	@Test
+	public void buildsComponentsInOrder()
+	{
+		PanelModel model = PanelModel.builder("demo", "Demo")
+			.section("General")
+			.label("Hello")
+			.toggle("t", "Toggle", true)
+			.slider("s", "Slider", 5)
+			.build();
+		assertEquals("demo", model.getPluginId());
+		assertEquals("Demo", model.getTitle());
+		assertEquals(4, model.getComponents().size());
+		assertEquals(ComponentType.SECTION, model.getComponents().get(0).getType());
+		assertEquals(ComponentType.TOGGLE, model.getComponents().get(2).getType());
+		assertEquals("true", model.getComponents().get(2).getValue());
+		assertEquals("5", model.getComponents().get(3).getValue());
+	}
 
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+	@Test
+	public void toJsonEscapesAndIncludesFields()
+	{
+		PanelModel model = PanelModel.builder("p", "Title \"q\"")
+			.label("line1\nline2")
+			.build();
+		String json = model.toJson();
+		assertTrue(json.contains("\"pluginId\":\"p\""));
+		assertTrue(json.contains("\\\"q\\\""));
+		assertTrue(json.contains("line1\\nline2"));
+		assertTrue(json.contains("\"type\":\"LABEL\""));
+		assertTrue(json.contains("\"id\":null"));
+	}
+}

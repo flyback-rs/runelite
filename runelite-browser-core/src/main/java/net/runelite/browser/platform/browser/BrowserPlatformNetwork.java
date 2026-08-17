@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,32 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform.browser;
 
-rootProject.name = "runelite"
+import net.runelite.browser.platform.DuplexStream;
+import net.runelite.browser.platform.GameEndpoint;
+import net.runelite.browser.platform.PlatformNetwork;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * Placeholder {@link PlatformNetwork}. Browsers cannot open raw TCP sockets, so a
+ * real implementation wraps a {@code WebSocket} (or {@code WebTransport}) to a
+ * trusted gateway into a {@link DuplexStream}. That gateway and the Jagex-approved
+ * transport are a later part of the port, so for now this reports that networking
+ * is not yet available rather than silently failing.
+ */
+public final class BrowserPlatformNetwork implements PlatformNetwork
+{
+	@Override
+	public DuplexStream connect(GameEndpoint endpoint)
+	{
+		switch (endpoint.getTransport())
+		{
+			case TCP:
+				throw new UnsupportedOperationException(
+					"Direct TCP is not available in the browser; a WSS/WebTransport gateway is required");
+			default:
+				throw new UnsupportedOperationException(
+					"Browser gateway transport is not implemented yet (endpoint " + endpoint + ")");
+		}
+	}
+}

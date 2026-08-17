@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,66 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.browser.platform;
 
-rootProject.name = "runelite"
+import java.util.Objects;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
+/**
+ * An immutable description of a game/cache endpoint to connect to: a host, a
+ * port, and the {@link Transport} used to reach it.
+ */
+public final class GameEndpoint
+{
+	private final String host;
+	private final int port;
+	private final Transport transport;
 
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+	public GameEndpoint(String host, int port, Transport transport)
+	{
+		this.host = Objects.requireNonNull(host, "host");
+		this.port = port;
+		this.transport = Objects.requireNonNull(transport, "transport");
+	}
+
+	public String getHost()
+	{
+		return host;
+	}
+
+	public int getPort()
+	{
+		return port;
+	}
+
+	public Transport getTransport()
+	{
+		return transport;
+	}
+
+	@Override
+	public boolean equals(Object o)
+	{
+		if (this == o)
+		{
+			return true;
+		}
+		if (!(o instanceof GameEndpoint))
+		{
+			return false;
+		}
+		GameEndpoint that = (GameEndpoint) o;
+		return port == that.port && host.equals(that.host) && transport == that.transport;
+	}
+
+	@Override
+	public int hashCode()
+	{
+		return Objects.hash(host, port, transport);
+	}
+
+	@Override
+	public String toString()
+	{
+		return transport + "://" + host + ":" + port;
+	}
+}

@@ -74,7 +74,9 @@ import joptsimple.ValueConverter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.browser.platform.Platform;
 import net.runelite.client.account.SessionManager;
+import net.runelite.client.browser.JvmPlatformServices;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.EventBus;
@@ -246,6 +248,10 @@ public class RuneLite
 			// This includes arguments from _JAVA_OPTIONS, which are parsed after command line flags and applied to
 			// the global VM args
 			log.info("Java VM arguments: {}", String.join(" ", runtime.getInputArguments()));
+
+			// Install the desktop platform services so code written against the
+			// browser-port platform seam resolves to the JVM implementations.
+			Platform.install(new JvmPlatformServices(RUNELITE_DIR));
 
 			final long start = System.currentTimeMillis();
 			injector = Guice.createInjector(new RuneLiteModule(

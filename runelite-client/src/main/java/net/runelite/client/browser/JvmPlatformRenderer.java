@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,26 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.client.browser;
 
-rootProject.name = "runelite"
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.browser.platform.PlatformRenderer;
+import net.runelite.browser.platform.SceneCommandBuffer;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * Desktop reference {@link PlatformRenderer}. RuneLite's real rendering happens
+ * through the LWJGL GPU plugin, so this implementation only records the size of
+ * each submitted frame; it exists to exercise the seam on the JVM.
+ */
+@Slf4j
+public class JvmPlatformRenderer implements PlatformRenderer
+{
+	@Override
+	public void submitScene(SceneCommandBuffer commands)
+	{
+		if (log.isTraceEnabled())
+		{
+			log.trace("scene submitted: {} sections, {} bytes", commands.getSectionCount(), commands.size());
+		}
+	}
+}

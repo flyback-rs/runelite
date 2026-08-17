@@ -1,0 +1,30 @@
+{
+  "name": "runelite-browser-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser runtime engine for the RuneLite browser port: OffscreenCanvas WebGPU/WebGL2 renderer, worker split, and DOM shell.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "format": "oxfmt src test build.mjs serve.mjs playwright.config.ts",
+    "format:check": "oxfmt --check src test build.mjs serve.mjs playwright.config.ts",
+    "build": "node build.mjs",
+    "serve": "node serve.mjs",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^24.0.0",
+    "@webgpu/types": "^0.1.71",
+    "esbuild": "^0.28.1",
+    "oxfmt": "^0.58.0",
+    "oxlint": "^1.73.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

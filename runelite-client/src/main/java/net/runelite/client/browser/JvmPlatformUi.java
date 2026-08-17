@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, RuneLite Browser Port
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,18 +22,23 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package net.runelite.client.browser;
 
-rootProject.name = "runelite"
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.browser.platform.PanelModel;
+import net.runelite.browser.platform.PlatformUi;
 
-// these two have artifact ids that don't match their project directory names
-// and so they are done without includeBuild so that intellij can resolve them properly
-include("jshell")
-project(":jshell").projectDir = file("./runelite-jshell")
-include("client")
-project(":client").projectDir = file("./runelite-client")
-apply(from = "./common.settings.gradle.kts")
-
-includeBuild("cache")
-includeBuild("runelite-api")
-includeBuild("runelite-gradle-plugin")
-includeBuild("runelite-browser-core")
+/**
+ * Desktop reference {@link PlatformUi}. The desktop shell renders panels with
+ * Swing; this reference implementation logs the published model so the seam can be
+ * exercised on the JVM. A later part maps {@link PanelModel} onto real Swing panels.
+ */
+@Slf4j
+public class JvmPlatformUi implements PlatformUi
+{
+	@Override
+	public void publishPanelModel(String pluginId, PanelModel model)
+	{
+		log.debug("panel published for {}: {}", pluginId, model.toJson());
+	}
+}
